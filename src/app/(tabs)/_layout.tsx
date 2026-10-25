@@ -9,6 +9,10 @@ export default function TabsLayout() {
   if (!isPreviewMode && !loading && !session) return <Redirect href="/(auth)/login" />;
   if (!isPreviewMode && !loading && !profile) return <Redirect href="/onboarding" />;
   return <NativeTabs tintColor={colors.primary} backgroundColor={colors.surface} disableTransparentOnScrollEdge>
+    <NativeTabs.Trigger name="nouri">
+      <NativeTabs.Trigger.Icon sf={{ default: 'sparkles', selected: 'sparkles' }} md={{ default: 'auto_awesome', selected: 'auto_awesome' }} />
+      <NativeTabs.Trigger.Label>Nouri</NativeTabs.Trigger.Label>
+    </NativeTabs.Trigger>
     <NativeTabs.Trigger name="capture">
       <NativeTabs.Trigger.Icon sf={{ default: 'plus.circle', selected: 'plus.circle.fill' }} md={{ default: 'add_circle', selected: 'add_circle' }} />
       <NativeTabs.Trigger.Label>Erfassen</NativeTabs.Trigger.Label>

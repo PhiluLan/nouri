@@ -5,16 +5,19 @@ import { colors, radii } from './theme';
 
 interface NouriMascotProps {
   size?: number;
+  message?: string;
+  accessibilityLabel?: string;
+  onInteract?: () => void;
 }
 
-export function NouriMascot({ size = 112 }: NouriMascotProps) {
+export function NouriMascot({ size = 112, message = 'Bereit! ✦', accessibilityLabel = 'Klein nouri begrüßen', onInteract }: NouriMascotProps) {
   const useNativeDriver = Platform.OS !== 'web';
   const [float] = useState(() => new Animated.Value(0));
   const [sway] = useState(() => new Animated.Value(0));
   const [reaction] = useState(() => new Animated.Value(0));
   const [glow] = useState(() => new Animated.Value(0.35));
   const [reduceMotion, setReduceMotion] = useState(false);
-  const [greeting, setGreeting] = useState(false);
+  const [greetingVisible, setGreetingVisible] = useState(false);
   const greetingTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
@@ -47,9 +50,10 @@ export function NouriMascot({ size = 112 }: NouriMascotProps) {
 
   function react() {
     void Haptics.impactAsync(Haptics.ImpactFeedbackStyle.Soft);
-    setGreeting(true);
+    onInteract?.();
+    setGreetingVisible(true);
     if (greetingTimer.current) clearTimeout(greetingTimer.current);
-    greetingTimer.current = setTimeout(() => setGreeting(false), 2200);
+    greetingTimer.current = setTimeout(() => setGreetingVisible(false), 2200);
     if (reduceMotion) return;
     reaction.stopAnimation();
     reaction.setValue(0);
@@ -67,9 +71,9 @@ export function NouriMascot({ size = 112 }: NouriMascotProps) {
   const scale = reaction.interpolate({ inputRange: [0, 0.5, 1], outputRange: [1, 1.08, 0.96] });
 
   return <View style={[styles.stage, { width: size + 18, height: size + 24 }]}>
-    {greeting ? <View accessibilityLiveRegion="polite" style={styles.bubble}><Text style={styles.bubbleText}>Bereit! ✦</Text></View> : null}
+    {greetingVisible ? <View accessibilityLiveRegion="polite" style={styles.bubble}><Text style={styles.bubbleText}>{message}</Text></View> : null}
     <Animated.View style={[styles.shadow, { width: size * 0.48 }, { opacity: float.interpolate({ inputRange: [0, 1], outputRange: [0.15, 0.08] }), transform: [{ scaleX: float.interpolate({ inputRange: [0, 1], outputRange: [1, 0.86] }) }] }]} />
-    <Pressable accessibilityRole="button" accessibilityLabel="Klein nouri begrüßen" onPress={react} style={styles.touchTarget}>
+    <Pressable accessibilityRole="button" accessibilityLabel={accessibilityLabel} onPress={react} style={styles.touchTarget}>
       <Animated.View style={{ width: size, height: size, transform: [{ translateY }, { rotate }, { scale }] }}>
         <Animated.View pointerEvents="none" style={[styles.aura, { width: size * 0.26, height: size * 0.31, left: size * 0.405, top: size * 0.59, opacity: glow, transform: [{ scale: glow.interpolate({ inputRange: [0.35, 0.72], outputRange: [0.88, 1.12] }) }] }]} />
         <Animated.Image source={require('../../assets/mascot/nouri-idle.png')} resizeMode="contain" style={{ width: size, height: size }} />
