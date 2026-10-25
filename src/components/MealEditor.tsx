@@ -3,7 +3,7 @@ import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-nativ
 import { analyzeMeal } from '../services/meals';
 import { hasUsableNutrientData, missingNutrients, updateItemAmount } from '../nutrition/engine';
 import type { MealItem } from '../types/domain';
-import { Button, Card, Notice, textStyles } from './ui';
+import { Button, Card, Notice } from './ui';
 import { colors, radii, spacing } from './theme';
 
 export function MealEditor({ items, onChange }: { items: MealItem[]; onChange: (items: MealItem[]) => void }) {
@@ -51,25 +51,30 @@ export function MealEditor({ items, onChange }: { items: MealItem[]; onChange: (
   }
 
   return <View style={styles.list}>
-    {items.map((item, index) => <Card key={`${item.fdc_id ?? 'new'}-${index}`}>
+    {items.map((item, index) => <Card elevated key={`${item.fdc_id ?? 'new'}-${index}`} style={styles.card}>
       <View style={styles.rowBetween}>
-        <Text style={styles.index}>{String(index + 1).padStart(2, '0')}</Text>
-        <Pressable onPress={() => onChange(items.filter((_, itemIndex) => itemIndex !== index))}><Text style={styles.remove}>Entfernen</Text></Pressable>
+        <View style={styles.indexBadge}><Text style={styles.index}>{index + 1}</Text></View>
+        <Pressable accessibilityRole="button" hitSlop={10} onPress={() => onChange(items.filter((_, itemIndex) => itemIndex !== index))} style={styles.removeButton}><Text style={styles.remove}>Entfernen</Text></Pressable>
       </View>
-      <Text style={styles.label}>Lebensmittel</Text>
-      <TextInput value={item.display_name} onChangeText={(value) => changeName(index, value)} style={styles.input} />
+      <View style={styles.field}>
+        <Text style={styles.label}>Lebensmittel</Text>
+        <TextInput accessibilityLabel={`Lebensmittel ${index + 1}`} value={item.display_name} onChangeText={(value) => changeName(index, value)} style={styles.input} />
+      </View>
       <View style={styles.amountRow}>
         <View style={styles.amountField}>
           <Text style={styles.label}>Menge</Text>
-          <TextInput value={item.amount_g ? String(item.amount_g) : ''} onChangeText={(value) => changeAmount(index, value)} keyboardType="decimal-pad" style={styles.input} />
+          <TextInput accessibilityLabel={`Menge für ${item.display_name} in Gramm`} value={item.amount_g ? String(item.amount_g) : ''} onChangeText={(value) => changeAmount(index, value)} keyboardType="decimal-pad" style={styles.input} />
         </View>
-        <Text style={styles.unit}>Gramm</Text>
+        <View style={styles.unitBadge}><Text style={styles.unit}>Gramm</Text></View>
       </View>
       {hasUsableNutrientData(item) ? <>
         <View style={styles.sourceBox}>
-          <Text style={styles.sourceTitle}>{item.data_type === 'Preview-Mock' ? 'Lokale Preview-Daten' : `USDA-Zuordnung · ${confidenceLabel(item.match_confidence)}`}</Text>
-          <Text style={textStyles.muted}>{item.fdc_description}</Text>
-          <Text style={styles.sourceMeta}>{item.data_type === 'Preview-Mock' ? 'Nicht für Produktionsberechnungen' : `FDC ${item.fdc_id} · ${item.data_type}`}</Text>
+          <View style={styles.sourceHeader}>
+            <Text style={styles.sourceTitle}>{item.data_type === 'Preview-Mock' ? 'Lokale Preview-Daten' : 'USDA FoodData Central'}</Text>
+            <View style={[styles.confidence, item.match_confidence !== 'high' && styles.confidenceWarning]}><Text style={styles.confidenceText}>{confidenceLabel(item.match_confidence)}</Text></View>
+          </View>
+          <Text style={styles.sourceDescription}>{item.fdc_description}</Text>
+          <Text style={styles.sourceMeta}>{item.data_type === 'Preview-Mock' ? 'Nicht für Produktionsberechnungen' : `FDC ${item.fdc_id} · ${item.data_type} · ${Object.keys(item.nutrients_per_100g).length}/8 Werte`}</Text>
         </View>
         {item.quantity_confidence !== 'high' ? <Notice warning>Die eingegebene Portionsmenge ist {item.quantity_confidence === 'low' ? 'unsicher' : 'geschätzt'}. Bitte prüfen.</Notice> : null}
       </> : <>
@@ -93,14 +98,24 @@ function confidenceLabel(value: MealItem['match_confidence']) {
 const styles = StyleSheet.create({
   list: { gap: spacing.md },
   rowBetween: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  index: { color: colors.primary, fontSize: 12, fontWeight: '800', letterSpacing: 1 },
-  remove: { color: colors.danger, fontSize: 13, fontWeight: '600' },
-  label: { color: colors.muted, fontSize: 12, fontWeight: '700', textTransform: 'uppercase', letterSpacing: 0.8 },
-  input: { borderRadius: radii.small, borderWidth: 1, borderColor: colors.line, backgroundColor: colors.background, color: colors.ink, fontSize: 16, minHeight: 46, paddingHorizontal: 12 },
+  card: { padding: spacing.lg, gap: spacing.md },
+  indexBadge: { width: 30, height: 30, borderRadius: 11, backgroundColor: colors.accentSoft, alignItems: 'center', justifyContent: 'center' },
+  index: { color: colors.primary, fontSize: 12, fontWeight: '800' },
+  removeButton: { minHeight: 34, justifyContent: 'center', paddingHorizontal: 4 },
+  remove: { color: colors.danger, fontSize: 13, fontWeight: '700' },
+  field: { gap: spacing.xs },
+  label: { color: colors.muted, fontSize: 11, fontWeight: '800', textTransform: 'uppercase', letterSpacing: 0.9 },
+  input: { borderRadius: radii.small, borderWidth: 1, borderColor: colors.lineStrong, backgroundColor: colors.background, color: colors.ink, fontSize: 16, minHeight: 50, paddingHorizontal: 14 },
   amountRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.sm },
   amountField: { flex: 1, gap: spacing.xs },
-  unit: { paddingBottom: 14, color: colors.muted },
-  sourceBox: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line, paddingTop: spacing.sm, gap: 3 },
-  sourceTitle: { color: colors.primary, fontSize: 12, fontWeight: '700' },
+  unitBadge: { height: 50, borderRadius: radii.small, paddingHorizontal: 14, backgroundColor: colors.primarySoft, justifyContent: 'center' },
+  unit: { color: colors.primary, fontSize: 13, fontWeight: '700' },
+  sourceBox: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line, paddingTop: spacing.md, gap: 5 },
+  sourceHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
+  sourceTitle: { color: colors.primary, fontSize: 12, fontWeight: '800' },
+  sourceDescription: { color: colors.inkSoft, fontSize: 14, lineHeight: 20 },
   sourceMeta: { color: colors.muted, fontSize: 11 },
+  confidence: { backgroundColor: colors.primarySoft, borderRadius: radii.pill, paddingHorizontal: 8, paddingVertical: 4 },
+  confidenceWarning: { backgroundColor: colors.warm },
+  confidenceText: { color: colors.primary, fontSize: 10, fontWeight: '800' },
 });

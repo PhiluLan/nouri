@@ -14,6 +14,11 @@ Ein eigenständiges Expo/React-Native-MVP für iOS: Mahlzeit in Alltagssprache e
 - Speichern, Bearbeiten und Löschen von Mahlzeiten
 - einfache 7-Tage-Übersicht
 - maximal drei regelbasierte Vorschläge unter Beachtung der erfassten Einschränkungen
+- native iOS-Tabnavigation und ein ruhiges, barrierearmes Designsystem
+- geführter Zwei-Schritt-Erfassungsflow mit Beispielen, klarer Quellenanzeige und haptischem Feedback
+- Pull-to-refresh, verständliche Lade-, Leer- und Fehlerzustände sowie direkte Übernahme einer Empfehlung
+- bearbeitbares Profil mit Referenzparametern, Ernährungsfiltern und selbstständigem Löschen aller Mahlzeitendaten
+- Supabase Auth mit bestätigten E-Mail-Adressen, mindestens 8 Zeichen und Schutz gegen bekannte kompromittierte Passwörter
 
 Die App ist bewusst **keine Kalorienzähl-App**. Sie diagnostiziert weder Nährstoffmängel noch Krankheiten. Erfasste Zufuhr ist nicht gleich körperlicher Versorgungsstatus.
 
@@ -124,15 +129,16 @@ npx expo-doctor
 npx supabase@latest db reset
 ```
 
-Ergebnis vom 25.10.2026:
+Ergebnis vom 25.10.2026 nach Level 2:
 
 - App- und Edge-Function-TypeScript: bestanden
-- Unit- und Integrations-Vertragstests: 9/9 bestanden
+- Unit- und Integrations-Vertragstests: 12/12 bestanden
 - ESLint: bestanden (0 Fehler, 0 Warnungen)
 - Expo Doctor: 20/20 Checks bestanden
 - iOS JavaScript/Hermes-Bundle: erfolgreich erzeugt
 - Supabase-Migration: im lokalen Postgres-17-Stack erfolgreich angewandt
-- Externe End-to-End-Analyse: benötigt die oben aufgeführten OpenAI- und USDA-Schlüssel und wurde ohne diese Zugangsdaten nicht ausgeführt
+- Externe End-to-End-Analyse: erfolgreich mit Auth, OpenAI-Parsing, korrigierter 120-g-Portion, passenden USDA-Zuordnungen und Supabase-Speicherung geprüft
+- Supabase Security Advisor: keine offenen Hinweise
 - npm Audit: 5 hohe transitive Warnungen in Expo-CLI-Buildabhängigkeiten (`node-forge`, `zod`); der automatische Fix schlägt einen inkompatiblen Downgrade auf Expo 44 vor und wurde deshalb nicht angewandt. Vor Release gegen ein aktualisiertes Expo-SDK erneut prüfen.
 
 ## Bekannte Punkte
@@ -142,7 +148,7 @@ Ergebnis vom 25.10.2026:
 - Zusammengesetzte Gerichte werden in Hauptbestandteile zerlegt; Rezeptdetails können fehlen und müssen geprüft werden.
 - USDA-Suche arbeitet mit einem vom Parser erzeugten englischen Suchbegriff. Unsichere Zuordnungen werden markiert.
 - Die Referenzengine deckt zunächst acht handlungsrelevante Nährstoffe ab. Eine spätere Version sollte die vollständige BLV-Referenztabelle versioniert importieren.
-- Für einen App-Store-Release sind zusätzlich Datenschutztext, Support-URL, Account-Löschprozess, Accessibility-Audit und Beta-Evaluation mit echten Mahlzeiten erforderlich.
+- Für einen App-Store-Release sind zusätzlich veröffentlichte Datenschutz- und Support-URLs, ein vollständiger Account-Löschprozess, Accessibility-Audit und Beta-Evaluation mit vielfältigen echten Mahlzeiten erforderlich.
 
 ## Quellen
 

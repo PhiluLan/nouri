@@ -28,7 +28,8 @@ Die App sortiert ausreichend dokumentierte Nährstoffe nach dem Anteil am Refere
 - UPDATE-Policies enthalten `USING` und `WITH CHECK`.
 - Die atomare RPC läuft als `SECURITY INVOKER`; kein Service-Role-Zugriff ist nötig.
 - Nutzer- und Fremdschlüssel sind indexiert, Tagesabfragen verwenden `(user_id, eaten_at)`.
-- Die Edge Function akzeptiert nur authentifizierte Nutzer-JWTs (`verify_jwt = true`).
+- Die Edge Function steht am Gateway mit `verify_jwt = false`, erzwingt die Nutzer-JWT aber innerhalb der Function über `withSupabase({ auth: 'user' })`. Das vermeidet die Gateway-Inkompatibilität mit Publishable Keys, ohne anonymen Zugriff auf die Analyse zu erlauben.
+- E-Mail-Anmeldungen verlangen bestätigte Adressen und mindestens acht Passwortzeichen. Supabase Auth lehnt zusätzlich Passwörter ab, die in bekannten Datenlecks vorkommen.
 
 ## 6. Datenmodell
 
@@ -37,3 +38,7 @@ Die App sortiert ausreichend dokumentierte Nährstoffe nach dem Anteil am Refere
 ## 7. Produkt- und Release-Grenzen
 
 Der MVP verzichtet bewusst auf Kalorien, Gewichtsziele, Streaks und Diagnosen. Primäre Navigation: Erfassen, Tagescheck, Empfehlungen. Bearbeiten ist ein modaler Detailflow und kein vierter Hauptscreen.
+
+## 8. Level-2-UX
+
+Die drei primären Bereiche verwenden ab Expo SDK 58 native Tabs mit SF Symbols auf iOS. Erfassen folgt einem expliziten Ablauf aus Beschreiben, Prüfen und Speichern. Tagescheck und Empfehlungen priorisieren Erklärung und Datenabdeckung statt Scores oder Gamification. Profil und Datenkontrolle liegen in einem modalen Sekundärbereich, damit die Hauptnavigation ruhig bleibt. Fehlende, ladende und fehlerhafte Zustände sind als eigenständige Produktzustände gestaltet; destructive Aktionen verlangen eine native Bestätigung.

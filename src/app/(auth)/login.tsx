@@ -1,8 +1,8 @@
 import { useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
 import { Redirect } from 'expo-router';
-import { Button, Field, Heading, Notice, Screen, textStyles } from '../../components/ui';
-import { colors } from '../../components/theme';
+import { BrandMark, Button, Card, Field, Heading, Notice, Screen } from '../../components/ui';
+import { colors, radii, spacing } from '../../components/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase';
 
@@ -33,21 +33,30 @@ export default function LoginScreen() {
   }
 
   return <Screen>
-    <View style={styles.brand}><Text style={styles.mark}>n</Text><Text style={styles.brandText}>nouri</Text></View>
-    <Heading eyebrow="Einfach essen. Klarer sehen." title={mode === 'login' ? 'Willkommen zurück' : 'Dein ruhiger Ernährungscheck'}>
-      Keine Kalorienziele. Nur nachvollziehbare Nährstoffdaten und passende nächste Lebensmittel.
+    <View style={styles.brand}><BrandMark /></View>
+    <Heading eyebrow="Einfach essen. Klarer sehen." title={mode === 'login' ? 'Willkommen zurück' : 'Lerne deine Ernährung besser kennen'}>
+      Ohne Kalorienziele. Mit nachvollziehbaren Nährstoffdaten und konkreten Ideen für den nächsten Teller.
     </Heading>
     {!isSupabaseConfigured ? <Notice warning>Setup-Modus: Die App benötigt die Werte aus .env.example. Es werden keine Mock-Nutzerdaten eingesetzt.</Notice> : null}
-    <Field label="E-Mail" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" autoComplete="email" />
-    <Field label="Passwort" value={password} onChangeText={setPassword} secureTextEntry autoComplete={mode === 'login' ? 'current-password' : 'new-password'} />
-    <Button title={mode === 'login' ? 'Anmelden' : 'Konto erstellen'} onPress={submit} loading={busy} />
-    <Text style={textStyles.muted}>Mit der Nutzung akzeptierst du, dass nouri eine Schätzung der Nährstoffzufuhr liefert – keine medizinische Beurteilung.</Text>
-    <Button secondary title={mode === 'login' ? 'Neu hier? Konto erstellen' : 'Schon registriert? Anmelden'} onPress={() => setMode(mode === 'login' ? 'signup' : 'login')} />
+    <Card elevated style={styles.form}>
+      <Field label="E-Mail" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" autoComplete="email" textContentType="emailAddress" />
+      <Field label="Passwort" value={password} onChangeText={setPassword} secureTextEntry autoComplete={mode === 'login' ? 'current-password' : 'new-password'} textContentType={mode === 'login' ? 'password' : 'newPassword'} />
+      <Button title={mode === 'login' ? 'Anmelden' : 'Konto erstellen'} onPress={() => void submit()} loading={busy} />
+      <Button ghost title={mode === 'login' ? 'Neu hier? Konto erstellen' : 'Schon registriert? Anmelden'} onPress={() => setMode(mode === 'login' ? 'signup' : 'login')} />
+    </Card>
+    <View style={styles.trustRow}>
+      <Text style={styles.trustMark}>✓</Text><Text style={styles.trustText}>Quellenbasierte Lebensmittelwerte</Text>
+      <Text style={styles.trustMark}>✓</Text><Text style={styles.trustText}>Keine medizinischen Diagnosen</Text>
+    </View>
+    <Text style={styles.legal}>nouri schätzt deine erfasste Nährstoffzufuhr. Die App ist kein Medizinprodukt und ersetzt keine fachliche Beratung.</Text>
   </Screen>;
 }
 
 const styles = StyleSheet.create({
-  brand: { flexDirection: 'row', alignItems: 'center', gap: 10, marginTop: 24, marginBottom: 36 },
-  mark: { width: 38, height: 38, borderRadius: 19, backgroundColor: colors.primary, color: colors.white, textAlign: 'center', lineHeight: 38, fontSize: 24, fontWeight: '700' },
-  brandText: { color: colors.ink, fontSize: 24, fontWeight: '700', letterSpacing: -0.6 },
+  brand: { marginTop: spacing.lg, marginBottom: spacing.xl },
+  form: { padding: spacing.lg, gap: spacing.md },
+  trustRow: { borderRadius: radii.medium, backgroundColor: colors.primarySoft, padding: spacing.md, flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, alignItems: 'center' },
+  trustMark: { color: colors.primary, fontSize: 12, fontWeight: '800', marginLeft: 4 },
+  trustText: { color: colors.inkSoft, fontSize: 12, marginRight: 6 },
+  legal: { color: colors.muted, fontSize: 11, lineHeight: 17, textAlign: 'center', paddingHorizontal: spacing.md },
 });
