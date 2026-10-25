@@ -1,0 +1,1 @@
+alter table public.profiles validate constraint legacy_life_stage_consistency;

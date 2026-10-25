@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { analyzeMeal } from '../services/meals';
 import { hasUsableNutrientData, missingNutrients, updateItemAmount } from '../nutrition/engine';
-import type { MealItem } from '../types/domain';
+import { NUTRIENT_KEYS, type MealItem } from '../types/domain';
 import { Button, Card, Notice } from './ui';
 import { colors, radii, spacing } from './theme';
 
@@ -74,7 +74,7 @@ export function MealEditor({ items, onChange }: { items: MealItem[]; onChange: (
             <View style={[styles.confidence, item.match_confidence !== 'high' && styles.confidenceWarning]}><Text style={styles.confidenceText}>{confidenceLabel(item.match_confidence)}</Text></View>
           </View>
           <Text style={styles.sourceDescription}>{item.fdc_description}</Text>
-          <Text style={styles.sourceMeta}>{item.data_type === 'Preview-Mock' ? 'Nicht für Produktionsberechnungen' : `FDC ${item.fdc_id} · ${item.data_type} · ${Object.keys(item.nutrients_per_100g).length}/8 Werte`}</Text>
+          <Text style={styles.sourceMeta}>{item.data_type === 'Preview-Mock' ? 'Nicht für Produktionsberechnungen' : `FDC ${item.fdc_id} · ${item.data_type} · ${Object.keys(item.nutrients_per_100g).length}/${NUTRIENT_KEYS.length} Werte`}</Text>
         </View>
         {item.quantity_confidence !== 'high' ? <Notice warning>Die eingegebene Portionsmenge ist {item.quantity_confidence === 'low' ? 'unsicher' : 'geschätzt'}. Bitte prüfen.</Notice> : null}
       </> : <>

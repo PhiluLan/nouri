@@ -1,8 +1,8 @@
 import { withSupabase } from 'npm:@supabase/server@1';
 import { matchConfidence, scoreUsdaFood } from './_shared/usda-ranking.ts';
+import { desiredUnits, extractNutrients, type NutrientKey } from './_shared/usda-nutrients.ts';
 
 type Confidence = 'high' | 'medium' | 'low';
-type NutrientKey = 'protein' | 'fiber' | 'calcium' | 'iron' | 'potassium' | 'vitaminC' | 'vitaminB12' | 'folate';
 
 interface ParsedItem {
   food_name_de: string;
@@ -19,17 +19,6 @@ interface FoodSearchResult {
   dataType: string;
   foodNutrients?: unknown[];
 }
-
-const nutrientNumbers: Record<NutrientKey, string[]> = {
-  protein: ['203'],
-  fiber: ['291'],
-  calcium: ['301'],
-  iron: ['303'],
-  potassium: ['306'],
-  vitaminC: ['401'],
-  vitaminB12: ['418'],
-  folate: ['435', '417'],
-};
 
 const handler = withSupabase({ auth: 'user' }, async (request) => {
   if (request.method !== 'POST') return json({ error: 'method_not_allowed' }, 405);
@@ -131,7 +120,7 @@ async function enrichWithUsda(parsed: ParsedItem, apiKey: string) {
   if (!detailResponse.ok) throw new Error(`USDA-Detailabruf fehlgeschlagen (${detailResponse.status}).`);
   const detail = await detailResponse.json() as FoodSearchResult;
   const per100g = extractNutrients(detail.foodNutrients ?? []);
-  const missing = (Object.keys(nutrientNumbers) as NutrientKey[]).filter((key) => per100g[key] === undefined);
+  const missing = (Object.keys(desiredUnits) as NutrientKey[]).filter((key) => per100g[key] === undefined);
   const confidence = matchConfidence(selected.food.description, parsed.search_query_en);
 
   return {
@@ -151,31 +140,6 @@ async function enrichWithUsda(parsed: ParsedItem, apiKey: string) {
   };
 }
 
-function extractNutrients(raw: unknown[]): Partial<Record<NutrientKey, number>> {
-  const result: Partial<Record<NutrientKey, number>> = {};
-  for (const key of Object.keys(nutrientNumbers) as NutrientKey[]) {
-    for (const number of nutrientNumbers[key]) {
-      const found = raw.find((entry) => nutrientNumber(entry) === number);
-      const amount = nutrientAmount(found);
-      if (amount !== null) { result[key] = round(amount); break; }
-    }
-  }
-  return result;
-}
-
-function nutrientNumber(value: unknown): string | null {
-  if (!value || typeof value !== 'object') return null;
-  const item = value as { nutrientNumber?: string; nutrient?: { number?: string } };
-  return item.nutrientNumber ?? item.nutrient?.number ?? null;
-}
-
-function nutrientAmount(value: unknown): number | null {
-  if (!value || typeof value !== 'object') return null;
-  const item = value as { value?: number; amount?: number };
-  const amount = item.value ?? item.amount;
-  return typeof amount === 'number' && Number.isFinite(amount) ? amount : null;
-}
-
 function scale(values: Partial<Record<NutrientKey, number>>, amountG: number) {
   return Object.fromEntries(Object.entries(values).map(([key, value]) => [key, round((value as number) * amountG / 100)]));
 }
@@ -186,11 +150,11 @@ function unmatched(parsed: ParsedItem, notes: string) {
     quantity_confidence: parsed.quantity_confidence, match_confidence: 'low' as const,
     fdc_id: null, fdc_description: null, data_type: null,
     nutrients_per_100g: {}, nutrients_for_amount: {},
-    missing_nutrients: Object.keys(nutrientNumbers), source_url: null, notes,
+    missing_nutrients: Object.keys(desiredUnits), source_url: null, notes,
   };
 }
 
-function round(value: number) { return Math.round(value * 100) / 100; }
+function round(value: number) { return Math.round(value * 10_000) / 10_000; }
 
 function json(body: unknown, status = 200) {
   return Response.json(body, { status });

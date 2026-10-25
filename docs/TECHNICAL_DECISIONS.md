@@ -12,9 +12,11 @@ Für jeden betrachteten Nährstoff werden `knownItems`, `totalItems` und `comple
 
 ## 3. Fachliche Referenzen
 
-Die MVP-Auswahl basiert auf den Schweizer Referenzwerten des BLV (Stand im Profil versioniert). Alter, Referenzgruppe, Körpergewicht sowie Schwangerschaft/Stillzeit beeinflussen relevante Werte. Diese Werte sind populationsbezogene Zufuhrreferenzen, keine Diagnose und keine Messung des Versorgungsstatus.
+Die Auswahl basiert auf der offiziellen BLV-XLSX „Dietary Reference Values for Switzerland“, vom BLV am 10.02.2026 publiziert und in der Datei als Datenstand Juni 2022 bezeichnet. Das Profil speichert Quelle, Datenversion und Fragebogen-Version getrennt.
 
-Die erste Version bildet Protein, Nahrungsfasern, Calcium, Eisen, Kalium, Vitamin C, Vitamin B12 und Folat ab. Vor einer klinisch oder institutionell genutzten Version müssen Werte, Altersbänder und Fußnoten mit der vollständigen BLV-Datentabelle automatisiert abgeglichen und fachlich freigegeben werden.
+Für Erwachsene bildet die Engine 33 tägliche Bereiche ab; Schwangerschaft und Stillzeit ergänzen einen eigenen DHA-Bereich. Alter, physiologische weibliche/männliche Referenzgruppe, Körpergewicht, Schwangerschaftstrimester, Stillphase, Menopausenstatus und Phytatzufuhr verändern ausschließlich die Werte, für die die BLV-Tabelle Unterschiede ausweist. Protein wird aus Gewicht und Lebensphase berechnet. Alpha-Linolensäure, Linolsäure, Thiamin und Niacin werden deterministisch aus den BLV-Angaben pro Energieeinheit und der passenden offiziellen Energiespanne abgeleitet, ohne ein Kalorienziel anzuzeigen. Bereiche für Personen über 65 bleiben als Bereiche sichtbar statt auf einen erfundenen Einzelwert reduziert zu werden.
+
+Energie, Gesamtfett, gesättigte Fettsäuren, einfach ungesättigte Fettsäuren, Kohlenhydrate und freie Zucker werden nicht als Tagesziele präsentiert, damit nouri keine Kalorien- oder Makro-Tracking-App wird. Chrom wird nicht dargestellt, weil die BLV-Tabelle keinen Zahlenwert enthält. Die Werte sind populationsbezogene Zufuhrreferenzen, keine Diagnose und keine Messung des Versorgungsstatus. Vor einer klinisch oder institutionell genutzten Version bleibt eine fachliche Freigabe erforderlich.
 
 ## 4. Empfehlungen sind regelbasiert
 
@@ -35,7 +37,9 @@ Die App sortiert ausreichend dokumentierte Nährstoffe nach dem Anteil am Refere
 
 ## 6. Datenmodell
 
-`profiles` enthält Referenzparameter und Einschränkungen. `meals` enthält den Originaltext und Zeitpunkt. `meal_items` enthält korrigierbare Positionen, USDA-Zuordnung, Quelllink, Werte pro 100 g, deterministisch skalierte Werte und die Liste fehlender Nährstoffe. Die Normalisierung erlaubt einzelne Lebensmittel später gezielt nachzuschlagen, ohne JSON-Mahlzeiten neu schreiben zu müssen.
+`profiles` enthält Referenzparameter und Einschränkungen. `reference_profile_version = 2` erzwingt nach dem Ausbau eine einmalige, kurze Vervollständigung bestehender Profile; Altdaten werden nicht stillschweigend mit Standardwerten aufgefüllt. Gewicht bleibt in der Datenbank für Altdaten nullable, ist aber für Version 2 in App und Referenzengine verpflichtend. Konsistenzregeln verbinden die detaillierte Lebensphase mit den beiden älteren Kompatibilitätsfeldern.
+
+`meals` enthält den Originaltext und Zeitpunkt. `meal_items` enthält korrigierbare Positionen, USDA-Zuordnung, Quelllink, Werte pro 100 g, deterministisch skalierte Werte und die Liste fehlender Nährstoffe. Die Normalisierung erlaubt einzelne Lebensmittel später gezielt nachzuschlagen, ohne JSON-Mahlzeiten neu schreiben zu müssen.
 
 ## 7. Produkt- und Release-Grenzen
 

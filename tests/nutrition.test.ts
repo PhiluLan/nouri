@@ -20,11 +20,13 @@ function item(overrides: Partial<MealItem> = {}): MealItem {
 
 const profile: Profile = {
   id: 'user', birth_year: 1990, sex: 'female', weight_kg: 60, pregnant: false, breastfeeding: false,
+  life_stage: 'none', menopause_status: 'pre', phytate_level: 'medium', reference_profile_version: 2,
   diet: [], allergies: [], reference_source: 'BLV', reference_version: '2026-02-10', onboarded_at: '2026-01-01T00:00:00Z',
 };
 
 test('scales only documented nutrients and never fills missing values with zero', () => {
   assert.deepEqual(scaleNutrients({ protein: 10, iron: 2.5 }, 150), { protein: 15, iron: 3.75 });
+  assert.equal(scaleNutrients({ fluoride: 0.025 }, 50).fluoride, 0.0125);
   assert.equal(scaleNutrients({ protein: 10 }, 0).protein, undefined);
   assert.ok(missingNutrients({ protein: 10 }).includes('vitaminB12'));
 });
@@ -44,12 +46,27 @@ test('aggregate marks a nutrient incomplete instead of treating unknown as zero'
   assert.equal(iron?.complete, false);
 });
 
-test('reference selection adapts protein to weight and life stage', () => {
+test('reference selection covers the complete adult nouri set and adapts weight and life stage', () => {
   const standard = referencesFor(profile, 2026);
-  assert.equal(standard.find((value) => value.key === 'protein')?.target, 50);
-  const pregnant = referencesFor({ ...profile, pregnant: true }, 2026);
+  assert.equal(standard.length, 33);
+  assert.equal(standard.find((value) => value.key === 'protein')?.target, 49.8);
+  assert.equal(standard.find((value) => value.key === 'zinc')?.target, 9.3);
+  const pregnant = referencesFor({ ...profile, pregnant: true, life_stage: 'pregnant_t2' }, 2026);
+  assert.equal(pregnant.length, 34);
+  assert.equal(pregnant.find((value) => value.key === 'protein')?.target, 58.8);
   assert.equal(pregnant.find((value) => value.key === 'folate')?.target, 550);
   assert.equal(pregnant.find((value) => value.key === 'iron')?.target, 30);
+});
+
+test('reference selection handles menopause, older adults and phytate-specific zinc', () => {
+  const post = referencesFor({ ...profile, menopause_status: 'post', phytate_level: 'very_high' }, 2026);
+  assert.equal(post.find((value) => value.key === 'iron')?.target, 11);
+  assert.equal(post.find((value) => value.key === 'zinc')?.target, 12.7);
+  const older = referencesFor({ ...profile, birth_year: 1950 }, 2026);
+  assert.equal(older.find((value) => value.key === 'protein')?.target, 60);
+  assert.equal(older.find((value) => value.key === 'protein')?.targetMax, 72);
+  assert.equal(older.find((value) => value.key === 'vitaminD')?.target, 20);
+  assert.equal(older.find((value) => value.key === 'calcium')?.targetMax, 1200);
 });
 
 test('recommendations respect vegan restrictions and remain capped at three', () => {

@@ -7,6 +7,8 @@ import { colors, radii, spacing } from '../components/theme';
 import { useAuth } from '../contexts/AuthContext';
 import { isPreviewMode } from '../lib/preview';
 import { supabase } from '../lib/supabase';
+import { REFERENCE_PROFILE_VERSION, REFERENCE_SOURCE, REFERENCE_VERSION } from '../nutrition/references';
+import type { LifeStage, MenopauseStatus, PhytateLevel } from '../types/domain';
 
 const dietOptions = [
   ['vegetarian', 'Vegetarisch'], ['vegan', 'Vegan'], ['lactose_free', 'Laktosefrei'],
@@ -17,31 +19,38 @@ export default function SettingsScreen() {
   const { session, profile, refreshProfile, signOut } = useAuth();
   const [birthYear, setBirthYear] = useState(String(profile?.birth_year ?? 1990));
   const [weight, setWeight] = useState(profile?.weight_kg ? String(profile.weight_kg) : '');
-  const [sex, setSex] = useState(profile?.sex ?? 'prefer_not');
-  const [pregnant, setPregnant] = useState(profile?.pregnant ?? false);
-  const [breastfeeding, setBreastfeeding] = useState(profile?.breastfeeding ?? false);
+  const [sex, setSex] = useState<'female' | 'male' | null>(profile?.sex === 'female' || profile?.sex === 'male' ? profile.sex : null);
+  const [lifeStage, setLifeStage] = useState<LifeStage>(profile?.life_stage ?? 'none');
+  const [menopause, setMenopause] = useState<MenopauseStatus>(profile?.menopause_status ?? 'not_applicable');
+  const [phytate, setPhytate] = useState<PhytateLevel>(profile?.phytate_level ?? 'medium');
   const [diet, setDiet] = useState<string[]>(profile?.diet ?? []);
   const [allergies, setAllergies] = useState((profile?.allergies ?? []).join(', '));
   const [busy, setBusy] = useState<'save' | 'delete' | 'account' | 'signout' | null>(null);
   const parsedYear = Number(birthYear);
   const validYear = useMemo(() => parsedYear >= 1900 && parsedYear <= new Date().getFullYear() - 18, [parsedYear]);
+  const weightValue = Number(weight.replace(',', '.'));
+  const valid = validYear && weightValue >= 30 && weightValue <= 300 && sex !== null;
 
   function toggle(tag: string) {
     setDiet((current) => current.includes(tag) ? current.filter((item) => item !== tag) : [...current, tag]);
   }
 
   async function save() {
-    if (!session || !validYear) return Alert.alert('Geburtsjahr prüfen', 'nouri ist für Erwachsene ab 18 Jahren ausgelegt.');
-    const weightValue = weight.trim() ? Number(weight.replace(',', '.')) : null;
-    if (weightValue !== null && (weightValue < 30 || weightValue > 300)) return Alert.alert('Gewicht prüfen', 'Bitte gib 30 bis 300 kg ein oder lasse das Feld leer.');
+    if (!session || !valid || !sex) return Alert.alert('Angaben prüfen', 'Bitte fülle Geburtsjahr, Gewicht und Referenzgruppe vollständig aus.');
     setBusy('save');
     try {
       const { error } = await supabase.from('profiles').update({
         birth_year: parsedYear,
         sex,
         weight_kg: weightValue,
-        pregnant: sex === 'female' && pregnant,
-        breastfeeding: sex === 'female' && breastfeeding,
+        pregnant: lifeStage.startsWith('pregnant'),
+        breastfeeding: lifeStage.startsWith('lactating'),
+        life_stage: sex === 'female' ? lifeStage : 'none',
+        menopause_status: sex === 'female' && lifeStage === 'none' ? menopause : 'not_applicable',
+        phytate_level: phytate,
+        reference_profile_version: REFERENCE_PROFILE_VERSION,
+        reference_source: REFERENCE_SOURCE,
+        reference_version: REFERENCE_VERSION,
         diet,
         allergies: allergies.split(',').map((item) => item.trim().toLowerCase()).filter(Boolean),
       }).eq('id', session.user.id);
@@ -125,18 +134,35 @@ export default function SettingsScreen() {
     <SectionHeader title="Referenzwerte" />
     <Card elevated>
       <Field label="Geburtsjahr" value={birthYear} onChangeText={setBirthYear} keyboardType="number-pad" />
-      <Field label="Gewicht in kg (optional)" value={weight} onChangeText={setWeight} keyboardType="decimal-pad" placeholder="Für die Protein-Referenz" />
-      <Text style={styles.label}>Referenzgruppe</Text>
+      <Field label="Gewicht in kg" value={weight} onChangeText={setWeight} keyboardType="decimal-pad" placeholder="Erforderlich für Protein" />
+      <Text style={styles.label}>Physiologische BLV-Referenzgruppe</Text>
       <View style={styles.wrap}>
-        <Chip label="Weiblich" selected={sex === 'female'} onPress={() => setSex('female')} />
-        <Chip label="Männlich" selected={sex === 'male'} onPress={() => setSex('male')} />
-        <Chip label="Divers" selected={sex === 'other'} onPress={() => setSex('other')} />
-        <Chip label="Keine Angabe" selected={sex === 'prefer_not'} onPress={() => setSex('prefer_not')} />
+        <Chip label="Weiblich" selected={sex === 'female'} onPress={() => { setSex('female'); if (menopause === 'not_applicable') setMenopause('pre'); }} />
+        <Chip label="Männlich" selected={sex === 'male'} onPress={() => { setSex('male'); setLifeStage('none'); setMenopause('not_applicable'); }} />
       </View>
-      {sex === 'female' ? <View style={styles.wrap}>
-        <Chip label="Schwanger" selected={pregnant} onPress={() => setPregnant(!pregnant)} />
-        <Chip label="Stillend" selected={breastfeeding} onPress={() => setBreastfeeding(!breastfeeding)} />
-      </View> : null}
+      <Text style={styles.helper}>Nur zur Auswahl der geschlechtsspezifischen Referenzwerte; unabhängig von deiner Geschlechtsidentität.</Text>
+      {sex === 'female' ? <>
+        <Text style={styles.label}>Lebensphase</Text>
+        <View style={styles.wrap}>
+          <Chip label="Keine" selected={lifeStage === 'none'} onPress={() => setLifeStage('none')} />
+          <Chip label="Schwanger · T1" selected={lifeStage === 'pregnant_t1'} onPress={() => setLifeStage('pregnant_t1')} />
+          <Chip label="Schwanger · T2" selected={lifeStage === 'pregnant_t2'} onPress={() => setLifeStage('pregnant_t2')} />
+          <Chip label="Schwanger · T3" selected={lifeStage === 'pregnant_t3'} onPress={() => setLifeStage('pregnant_t3')} />
+          <Chip label="Stillend · ≤6 Mon." selected={lifeStage === 'lactating_0_6'} onPress={() => setLifeStage('lactating_0_6')} />
+          <Chip label="Stillend · >6 Mon." selected={lifeStage === 'lactating_over_6'} onPress={() => setLifeStage('lactating_over_6')} />
+        </View>
+        {lifeStage === 'none' ? <View style={styles.wrap}>
+          <Chip label="Vor Menopause" selected={menopause === 'pre'} onPress={() => setMenopause('pre')} />
+          <Chip label="Nach Menopause" selected={menopause === 'post'} onPress={() => setMenopause('post')} />
+        </View> : null}
+      </> : null}
+      <Text style={styles.label}>Vollkorn & Hülsenfrüchte</Text>
+      <View style={styles.wrap}>
+        <Chip label="Selten" selected={phytate === 'low'} onPress={() => setPhytate('low')} />
+        <Chip label="Regelmässig" selected={phytate === 'medium'} onPress={() => setPhytate('medium')} />
+        <Chip label="Sehr häufig" selected={phytate === 'high'} onPress={() => setPhytate('high')} />
+        <Chip label="Fast immer" selected={phytate === 'very_high'} onPress={() => setPhytate('very_high')} />
+      </View>
     </Card>
 
     <SectionHeader title="Ernährungsfilter" />
@@ -145,7 +171,7 @@ export default function SettingsScreen() {
       <Field label="Weitere Allergien" value={allergies} onChangeText={setAllergies} placeholder="z. B. Erdnuss, Soja" />
       <Text style={styles.helper}>Mehrere Allergien mit Komma trennen.</Text>
     </Card>
-    <Button title="Änderungen speichern" onPress={() => void save()} loading={busy === 'save'} disabled={isPreviewMode || Boolean(busy) || !validYear} />
+    <Button title="Änderungen speichern" onPress={() => void save()} loading={busy === 'save'} disabled={isPreviewMode || Boolean(busy) || !valid} />
 
     <SectionHeader title="Daten & Konto" />
     <Card tonal>

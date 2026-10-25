@@ -6,12 +6,13 @@ Ein eigenständiges Expo/React-Native-MVP für iOS: Mahlzeit in Alltagssprache e
 
 - E-Mail-/Passwort-Authentifizierung mit Supabase
 - Passwort-Wiederherstellung per sicherem iOS-Deep-Link
-- Onboarding mit Altersgruppe, Referenzgruppe, Gewicht (optional), Schwangerschaft/Stillzeit, Ernährungsweise und Allergien
+- geführtes Kurz-Onboarding mit Geburtsjahr, verpflichtendem Gewicht, physiologischer BLV-Referenzgruppe, Schwangerschaftstrimester, Stillphase, Menopausenstatus, Phytatstufe, Ernährungsweise und Allergien
 - serverseitiges, strukturiertes Meal-Parsing über die OpenAI Responses API
 - serverseitiger Abgleich jedes Lebensmittels mit USDA FoodData Central (FDC-ID und Quelllink werden gespeichert)
 - Korrektur von Namen und Mengen; ein geänderter Name muss vor dem Speichern erneut mit USDA abgeglichen werden
 - deterministische Skalierung `Wert pro 100 g × Gramm / 100` im Client und nochmals in der Datenbank
 - Tagescheck mit Datenabdeckung statt erfundener Nullwerte
+- 33 tägliche Referenzbereiche für Erwachsene beziehungsweise 34 in Schwangerschaft/Stillzeit; kompakte Übersicht mit aufklappbaren Vitaminen, Mineralstoffen und essenziellen Fettsäuren
 - Speichern, Bearbeiten und Löschen von Mahlzeiten
 - einfache 7-Tage-Übersicht
 - maximal drei regelbasierte Vorschläge unter Beachtung der erfassten Einschränkungen
@@ -22,7 +23,7 @@ Ein eigenständiges Expo/React-Native-MVP für iOS: Mahlzeit in Alltagssprache e
 - vollständige, zweifach bestätigte Kontolöschung inklusive Profil- und Mahlzeitendaten
 - Supabase Auth mit bestätigten E-Mail-Adressen, mindestens 8 Zeichen und Schutz gegen bekannte kompromittierte Passwörter
 
-Die App ist bewusst **keine Kalorienzähl-App**. Sie diagnostiziert weder Nährstoffmängel noch Krankheiten. Erfasste Zufuhr ist nicht gleich körperlicher Versorgungsstatus.
+Die App ist bewusst **keine Kalorienzähl-App**. Energie wird nur intern verwendet, um die vom BLV pro Energieeinheit angegebenen Werte für essenzielle Fettsäuren, Thiamin und Niacin nachvollziehbar abzuleiten; ein Kalorienziel wird nicht angezeigt. Sie diagnostiziert weder Nährstoffmängel noch Krankheiten. Erfasste Zufuhr ist nicht gleich körperlicher Versorgungsstatus.
 
 ## Architektur
 
@@ -132,16 +133,18 @@ npx expo-doctor
 npx supabase@latest db reset
 ```
 
-Ergebnis vom 25.10.2026 nach Level 2:
+Ergebnis vom 25.10.2026 nach Ausbau der Referenzengine:
 
 - App- und Edge-Function-TypeScript: bestanden
-- Unit- und Integrations-Vertragstests: 15/15 bestanden
+- Unit- und Integrations-Vertragstests: 20/20 bestanden
 - ESLint: bestanden (0 Fehler, 0 Warnungen)
 - Expo Doctor: 20/20 Checks bestanden
 - iOS JavaScript/Hermes-Bundle: erfolgreich erzeugt
 - Supabase-Migration: im lokalen Postgres-17-Stack erfolgreich angewandt
 - Externe End-to-End-Analyse: erfolgreich mit Auth, OpenAI-Parsing, korrigierter 120-g-Portion, passenden USDA-Zuordnungen und Supabase-Speicherung geprüft
 - Supabase Security Advisor: keine offenen Hinweise
+- Produktionsschema `expand_reference_profile` und validierte Konsistenz-Constraint: angewandt
+- Edge Function `analyze-meal` Version 6 mit 34 USDA-Nährstofffeldern: aktiv; anonyme Anfrage korrekt mit HTTP 401 abgewiesen
 - npm Audit: 5 hohe transitive Warnungen in Expo-CLI-Buildabhängigkeiten (`node-forge`, `zod`); der automatische Fix schlägt einen inkompatiblen Downgrade auf Expo 44 vor und wurde deshalb nicht angewandt. Vor Release gegen ein aktualisiertes Expo-SDK erneut prüfen.
 
 ## Bekannte Punkte
@@ -150,12 +153,14 @@ Ergebnis vom 25.10.2026 nach Level 2:
 - Portionen ohne Mengenangabe bleiben sichtbar als unsicher markiert.
 - Zusammengesetzte Gerichte werden in Hauptbestandteile zerlegt; Rezeptdetails können fehlen und müssen geprüft werden.
 - USDA-Suche arbeitet mit einem vom Parser erzeugten englischen Suchbegriff. Unsichere Zuordnungen werden markiert.
-- Die Referenzengine deckt zunächst acht handlungsrelevante Nährstoffe ab. Eine spätere Version sollte die vollständige BLV-Referenztabelle versioniert importieren.
+- Die Referenzengine bildet für Erwachsene 33 tägliche Bereiche ab, in Schwangerschaft und Stillzeit zusätzlich DHA. Energie, Gesamtfett und Kohlenhydrate werden wegen des Produktprinzips „keine Kalorienzähl-App“ nicht als Ziele dargestellt; Chrom hat in der BLV-Tabelle keinen Zahlenwert.
+- FoodData Central dokumentiert nicht für jedes Lebensmittel jeden Nährstoff. Besonders Jod, Biotin, Chlorid und Molybdän fehlen oft. nouri lässt solche Werte offen und zeigt die Datenabdeckung, statt `0` anzunehmen.
 - Für einen App-Store-Release sind zusätzlich veröffentlichte Datenschutz- und Support-URLs, eigene SMTP-Zustellung, Accessibility-Audit und Beta-Evaluation mit vielfältigen echten Mahlzeiten erforderlich.
 
 ## Quellen
 
 - [Schweizer Referenzwerte für die Nährstoffzufuhr (BLV)](https://www.blv.admin.ch/de/naehrstoffzufuhr)
+- [Offizielle BLV-Referenztabelle (XLSX)](https://www.blv.admin.ch/dam/de/sd-web/FLClcT03o4I6/nutrient-requirements-ch-2022.xlsx)
 - [USDA FoodData Central API Guide](https://fdc.nal.usda.gov/api-guide/)
 - [OpenAI Responses API – Structured Outputs](https://developers.openai.com/api/reference/resources/responses/methods/create)
 - [Supabase Auth mit React Native](https://supabase.com/docs/guides/auth/quickstarts/react-native)

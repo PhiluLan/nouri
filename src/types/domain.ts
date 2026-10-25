@@ -1,25 +1,31 @@
 export const NUTRIENT_KEYS = [
-  'protein',
-  'fiber',
-  'calcium',
-  'iron',
-  'potassium',
-  'vitaminC',
-  'vitaminB12',
-  'folate',
+  'protein', 'fiber', 'water',
+  'alphaLinolenicAcid', 'epaDha', 'dha', 'linoleicAcid',
+  'biotin', 'vitaminB12', 'folate', 'niacin', 'pantothenicAcid', 'riboflavin', 'thiamin',
+  'vitaminA', 'vitaminB6', 'vitaminC', 'vitaminD', 'vitaminE', 'vitaminK',
+  'calcium', 'chloride', 'copper', 'fluoride', 'iodine', 'iron', 'magnesium', 'manganese',
+  'molybdenum', 'phosphorus', 'potassium', 'selenium', 'sodium', 'zinc',
 ] as const;
 
 export type NutrientKey = (typeof NUTRIENT_KEYS)[number];
 export type NutrientMap = Partial<Record<NutrientKey, number>>;
 export type Confidence = 'high' | 'medium' | 'low';
+export type ReferenceSex = 'female' | 'male' | 'other' | 'prefer_not';
+export type LifeStage = 'none' | 'pregnant_t1' | 'pregnant_t2' | 'pregnant_t3' | 'lactating_0_6' | 'lactating_over_6';
+export type MenopauseStatus = 'pre' | 'post' | 'not_applicable';
+export type PhytateLevel = 'low' | 'medium' | 'high' | 'very_high';
 
 export interface Profile {
   id: string;
   birth_year: number;
-  sex: 'female' | 'male' | 'other' | 'prefer_not';
+  sex: ReferenceSex;
   weight_kg: number | null;
   pregnant: boolean;
   breastfeeding: boolean;
+  life_stage: LifeStage;
+  menopause_status: MenopauseStatus;
+  phytate_level: PhytateLevel;
+  reference_profile_version: number;
   diet: string[];
   allergies: string[];
   reference_source: string;
@@ -61,9 +67,14 @@ export interface ParsedMeal {
 export interface NutrientReference {
   key: NutrientKey;
   label: string;
-  unit: 'g' | 'mg' | 'µg';
+  unit: 'g' | 'mg' | 'µg' | 'ml';
   target: number;
+  targetMax?: number;
+  kind: 'minimum' | 'range' | 'maximum';
+  group: 'basis' | 'fats' | 'vitamins' | 'minerals';
+  priority: number;
   source: string;
+  note?: string;
 }
 
 export interface NutrientTotal {

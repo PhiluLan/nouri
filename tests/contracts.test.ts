@@ -3,9 +3,13 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
 const migrationPath = new URL('../supabase/migrations/20261025173319_initial_nouri_schema.sql', import.meta.url);
+const profileMigrationPath = new URL('../supabase/migrations/20261025193618_expand_reference_profile.sql', import.meta.url);
+const saveMealMigrationPath = new URL('../supabase/migrations/20261025194057_expand_save_meal_nutrients.sql', import.meta.url);
 const edgePath = new URL('../supabase/functions/analyze-meal/index.ts', import.meta.url);
 const deleteAccountPath = new URL('../supabase/functions/delete-account/index.ts', import.meta.url);
 const migration = readFileSync(migrationPath, 'utf8');
+const profileMigration = readFileSync(profileMigrationPath, 'utf8');
+const saveMealMigration = readFileSync(saveMealMigrationPath, 'utf8');
 const edge = readFileSync(edgePath, 'utf8');
 const deleteAccount = readFileSync(deleteAccountPath, 'utf8');
 
@@ -37,4 +41,18 @@ test('account deletion requires user auth, explicit confirmation and only delete
   assert.match(deleteAccount, /context\.userClaims\?\.id \?\? context\.jwtClaims\?\.sub/);
   assert.match(deleteAccount, /auth\.admin\.deleteUser\(userId\)/);
   assert.doesNotMatch(deleteAccount, /Deno\.env\.get\(['"]SUPABASE_SERVICE_ROLE_KEY/);
+});
+
+test('reference profile schema constrains every input used by the BLV engine', () => {
+  for (const field of ['life_stage', 'menopause_status', 'phytate_level', 'reference_profile_version']) {
+    assert.match(profileMigration, new RegExp(`add column ${field}`, 'i'));
+  }
+  assert.match(profileMigration, /life_stage_reference_group/i);
+  assert.match(profileMigration, /legacy_life_stage_consistency/i);
+});
+
+test('database persistence uses the expanded nutrient contract and preserves micronutrient precision', () => {
+  assert.match(saveMealMigration, /'epaDha'.*'molybdenum'.*'zinc'/s);
+  assert.match(saveMealMigration, /round\([\s\S]*?, 4\)/);
+  assert.match(saveMealMigration, /security invoker/i);
 });

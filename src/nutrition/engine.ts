@@ -6,7 +6,7 @@ export function scaleNutrients(per100g: NutrientMap, amountG: number): NutrientM
   return Object.fromEntries(
     Object.entries(per100g)
       .filter(([, value]) => typeof value === 'number' && Number.isFinite(value))
-      .map(([key, value]) => [key, Math.round((value as number) * factor * 100) / 100]),
+      .map(([key, value]) => [key, Math.round((value as number) * factor * 10_000) / 10_000]),
   ) as NutrientMap;
 }
 
