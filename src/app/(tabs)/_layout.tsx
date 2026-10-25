@@ -21,5 +21,9 @@ export default function TabsLayout() {
       <NativeTabs.Trigger.Icon sf={{ default: 'leaf', selected: 'leaf.fill' }} md={{ default: 'spa', selected: 'spa' }} />
       <NativeTabs.Trigger.Label>Ideen</NativeTabs.Trigger.Label>
     </NativeTabs.Trigger>
+    <NativeTabs.Trigger name="body">
+      <NativeTabs.Trigger.Icon sf="figure.stand" md="accessibility_new" />
+      <NativeTabs.Trigger.Label>Körper</NativeTabs.Trigger.Label>
+    </NativeTabs.Trigger>
   </NativeTabs>;
 }

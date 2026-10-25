@@ -26,6 +26,13 @@ test('uses local rolling periods for today and the last 30 days', () => {
   assert.equal(contributionsFor(meals, 'iron', 'month', now).length, 3);
 });
 
+test('keeps documented zeroes out of the list of contributing foods', () => {
+  const now = new Date('2026-10-25T20:00:00+01:00');
+  const withZero = [meal('zero', '2026-10-25T12:00:00+01:00', 'Frühstück', [item('Lebensmittel ohne Eisen', 0)])];
+  assert.equal(contributionsFor(withZero, 'iron', 'day', now).length, 0);
+  assert.deepEqual(contributionCoverage(withZero, 'iron', 'day', now), { known: 1, total: 1 });
+});
+
 function item(display_name: string, iron?: number) {
   return {
     display_name, amount_g: 100, portion_label: '100 g', quantity_confidence: 'high' as const, match_confidence: 'high' as const,

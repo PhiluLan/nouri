@@ -10,8 +10,8 @@ const periods: { key: ContributionPeriod; label: string; description: string }[]
   { key: 'month', label: '30 Tage', description: 'in 30 Tagen' },
 ];
 
-export function NutrientSourcesModal({ reference, meals, onClose }: { reference: NutrientReference | null; meals: Meal[]; onClose: () => void }) {
-  const [period, setPeriod] = useState<ContributionPeriod>('day');
+export function NutrientSourcesModal({ reference, meals, onClose, initialPeriod = 'day' }: { reference: NutrientReference | null; meals: Meal[]; onClose: () => void; initialPeriod?: ContributionPeriod }) {
+  const [period, setPeriod] = useState<ContributionPeriod>(initialPeriod);
   const contributions = useMemo(() => reference ? contributionsFor(meals, reference.key, period) : [], [meals, period, reference]);
   const ingredients = useMemo(() => groupContributionsByIngredient(contributions), [contributions]);
   if (!reference) return null;

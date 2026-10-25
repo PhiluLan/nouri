@@ -34,7 +34,7 @@ export function contributionsFor(meals: Meal[], key: NutrientKey, period: Contri
     })
     .flatMap((meal) => (meal.meal_items ?? []).flatMap((item) => {
       const amount = item.nutrients_for_amount[key];
-      return typeof amount === 'number' && Number.isFinite(amount) ? [{
+      return typeof amount === 'number' && Number.isFinite(amount) && amount > 0 ? [{
         mealId: meal.id,
         mealText: meal.raw_text,
         eatenAt: meal.eaten_at,
