@@ -4,8 +4,10 @@ import test from 'node:test';
 
 const migrationPath = new URL('../supabase/migrations/20261025173319_initial_nouri_schema.sql', import.meta.url);
 const edgePath = new URL('../supabase/functions/analyze-meal/index.ts', import.meta.url);
+const deleteAccountPath = new URL('../supabase/functions/delete-account/index.ts', import.meta.url);
 const migration = readFileSync(migrationPath, 'utf8');
 const edge = readFileSync(edgePath, 'utf8');
+const deleteAccount = readFileSync(deleteAccountPath, 'utf8');
 
 test('every exposed user-data table enables RLS and has ownership policies', () => {
   for (const table of ['profiles', 'meals', 'meal_items']) {
@@ -27,4 +29,12 @@ test('edge function requires user auth and keeps source APIs server-side', () =>
   assert.match(edge, /Deno\.env\.get\('USDA_API_KEY'\)/);
   assert.match(edge, /api\.nal\.usda\.gov\/fdc\/v1\/food/);
   assert.match(edge, /type: 'json_schema'/);
+});
+
+test('account deletion requires user auth, explicit confirmation and only deletes the caller', () => {
+  assert.match(deleteAccount, /withSupabase\(\{ auth: 'user' \}/);
+  assert.match(deleteAccount, /confirmation !== 'DELETE_ACCOUNT'/);
+  assert.match(deleteAccount, /context\.userClaims\?\.id \?\? context\.jwtClaims\?\.sub/);
+  assert.match(deleteAccount, /auth\.admin\.deleteUser\(userId\)/);
+  assert.doesNotMatch(deleteAccount, /Deno\.env\.get\(['"]SUPABASE_SERVICE_ROLE_KEY/);
 });

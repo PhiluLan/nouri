@@ -30,6 +30,8 @@ Die App sortiert ausreichend dokumentierte Nährstoffe nach dem Anteil am Refere
 - Nutzer- und Fremdschlüssel sind indexiert, Tagesabfragen verwenden `(user_id, eaten_at)`.
 - Die Edge Function steht am Gateway mit `verify_jwt = false`, erzwingt die Nutzer-JWT aber innerhalb der Function über `withSupabase({ auth: 'user' })`. Das vermeidet die Gateway-Inkompatibilität mit Publishable Keys, ohne anonymen Zugriff auf die Analyse zu erlauben.
 - E-Mail-Anmeldungen verlangen bestätigte Adressen und mindestens acht Passwortzeichen. Supabase Auth lehnt zusätzlich Passwörter ab, die in bekannten Datenlecks vorkommen.
+- Die Passwort-Wiederherstellung verwendet den registrierten App-Scheme `nouri://reset-password`. Der Client übernimmt ausschließlich kurzlebige Auth-Tokens aus dem Supabase-Link und setzt danach eine lokale Sitzung für den Passwortwechsel.
+- Die vollständige Kontolöschung liegt in einer authentifizierten Edge Function. Sie entnimmt die User-ID nur den serverseitig geprüften JWT-Claims, verlangt zusätzlich eine feste Bestätigung und akzeptiert keine vom Client übermittelte User-ID. Durch `on delete cascade` verschwinden Profil, Mahlzeiten und Positionen gemeinsam mit dem Auth-Nutzer.
 
 ## 6. Datenmodell
 

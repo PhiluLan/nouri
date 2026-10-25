@@ -22,7 +22,7 @@ export default function SettingsScreen() {
   const [breastfeeding, setBreastfeeding] = useState(profile?.breastfeeding ?? false);
   const [diet, setDiet] = useState<string[]>(profile?.diet ?? []);
   const [allergies, setAllergies] = useState((profile?.allergies ?? []).join(', '));
-  const [busy, setBusy] = useState<'save' | 'delete' | 'signout' | null>(null);
+  const [busy, setBusy] = useState<'save' | 'delete' | 'account' | 'signout' | null>(null);
   const parsedYear = Number(birthYear);
   const validYear = useMemo(() => parsedYear >= 1900 && parsedYear <= new Date().getFullYear() - 18, [parsedYear]);
 
@@ -72,6 +72,31 @@ export default function SettingsScreen() {
         } finally {
           setBusy(null);
         }
+      } },
+    ]);
+  }
+
+  function confirmDeleteAccount() {
+    if (!session) return;
+    Alert.alert('nouri-Konto löschen?', 'Dein Konto, dein Profil und alle Mahlzeiten werden dauerhaft gelöscht. Dieser Schritt kann nicht rückgängig gemacht werden.', [
+      { text: 'Abbrechen', style: 'cancel' },
+      { text: 'Konto löschen', style: 'destructive', onPress: () => {
+        Alert.alert('Wirklich endgültig löschen?', 'Nach dem Löschen kannst du dich mit diesem Konto nicht mehr anmelden.', [
+          { text: 'Nein, behalten', style: 'cancel' },
+          { text: 'Endgültig löschen', style: 'destructive', onPress: async () => {
+            setBusy('account');
+            try {
+              const { error } = await supabase.functions.invoke('delete-account', { body: { confirmation: 'DELETE_ACCOUNT' } });
+              if (error) throw error;
+              await supabase.auth.signOut({ scope: 'local' });
+              await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
+              router.replace('/(auth)/login');
+            } catch (error) {
+              Alert.alert('Konto nicht gelöscht', error instanceof Error ? error.message : 'Unbekannter Fehler');
+              setBusy(null);
+            }
+          } },
+        ]);
       } },
     ]);
   }
@@ -130,6 +155,9 @@ export default function SettingsScreen() {
     {!isPreviewMode ? <>
       <Button danger title="Alle Mahlzeiten löschen" onPress={confirmDeleteMeals} loading={busy === 'delete'} disabled={Boolean(busy)} />
       <Button secondary title="Abmelden" onPress={() => void logout()} loading={busy === 'signout'} disabled={Boolean(busy)} />
+      <Pressable accessibilityRole="button" disabled={Boolean(busy)} onPress={confirmDeleteAccount} style={({ pressed }) => [styles.deleteAccount, pressed && styles.pressed]}>
+        <Text style={styles.deleteAccountText}>{busy === 'account' ? 'Konto wird gelöscht …' : 'Konto endgültig löschen'}</Text>
+      </Pressable>
     </> : null}
     <Notice warning>nouri ist kein Medizinprodukt und ersetzt keine medizinische oder ernährungsmedizinische Beratung.</Notice>
   </Screen>;
@@ -145,4 +173,7 @@ const styles = StyleSheet.create({
   helper: { color: colors.muted, fontSize: 11, lineHeight: 16 },
   dataTitle: { color: colors.ink, fontSize: 16, fontWeight: '800' },
   dataText: { color: colors.inkSoft, fontSize: 13, lineHeight: 20 },
+  deleteAccount: { minHeight: 44, alignItems: 'center', justifyContent: 'center', paddingHorizontal: spacing.md },
+  deleteAccountText: { color: colors.danger, fontSize: 13, fontWeight: '700', textDecorationLine: 'underline' },
+  pressed: { opacity: 0.65 },
 });

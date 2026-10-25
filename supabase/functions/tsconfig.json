@@ -10,5 +10,5 @@
     "types": [],
     "skipLibCheck": true
   },
-  "files": ["runtime.d.ts", "analyze-meal/index.ts"]
+  "files": ["runtime.d.ts", "analyze-meal/index.ts", "delete-account/index.ts"]
 }

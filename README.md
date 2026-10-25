@@ -5,6 +5,7 @@ Ein eigenständiges Expo/React-Native-MVP für iOS: Mahlzeit in Alltagssprache e
 ## Was funktioniert
 
 - E-Mail-/Passwort-Authentifizierung mit Supabase
+- Passwort-Wiederherstellung per sicherem iOS-Deep-Link
 - Onboarding mit Altersgruppe, Referenzgruppe, Gewicht (optional), Schwangerschaft/Stillzeit, Ernährungsweise und Allergien
 - serverseitiges, strukturiertes Meal-Parsing über die OpenAI Responses API
 - serverseitiger Abgleich jedes Lebensmittels mit USDA FoodData Central (FDC-ID und Quelllink werden gespeichert)
@@ -18,6 +19,7 @@ Ein eigenständiges Expo/React-Native-MVP für iOS: Mahlzeit in Alltagssprache e
 - geführter Zwei-Schritt-Erfassungsflow mit Beispielen, klarer Quellenanzeige und haptischem Feedback
 - Pull-to-refresh, verständliche Lade-, Leer- und Fehlerzustände sowie direkte Übernahme einer Empfehlung
 - bearbeitbares Profil mit Referenzparametern, Ernährungsfiltern und selbstständigem Löschen aller Mahlzeitendaten
+- vollständige, zweifach bestätigte Kontolöschung inklusive Profil- und Mahlzeitendaten
 - Supabase Auth mit bestätigten E-Mail-Adressen, mindestens 8 Zeichen und Schutz gegen bekannte kompromittierte Passwörter
 
 Die App ist bewusst **keine Kalorienzähl-App**. Sie diagnostiziert weder Nährstoffmängel noch Krankheiten. Erfasste Zufuhr ist nicht gleich körperlicher Versorgungsstatus.
@@ -102,9 +104,10 @@ npx supabase@latest link --project-ref <project-ref>
 npx supabase@latest db push
 npx supabase@latest secrets set OPENAI_API_KEY=<secret> USDA_API_KEY=<secret> OPENAI_MODEL=gpt-5-mini
 npx supabase@latest functions deploy analyze-meal
+npx supabase@latest functions deploy delete-account
 ```
 
-Danach `.env` mit der Produktions-URL und dem Publishable Key befüllen. In Produktion E-Mail-Bestätigung, eigene SMTP-Zustellung und passende Redirect-URLs in Supabase Auth konfigurieren.
+Danach `.env` mit der Produktions-URL und dem Publishable Key befüllen. In Supabase Auth muss `nouri://reset-password` als Redirect-URL erlaubt sein. Vor einer öffentlichen Beta ist eine eigene SMTP-Zustellung zu konfigurieren; der Supabase-Testversand ist stark limitiert.
 
 ## TestFlight / EAS
 
@@ -132,7 +135,7 @@ npx supabase@latest db reset
 Ergebnis vom 25.10.2026 nach Level 2:
 
 - App- und Edge-Function-TypeScript: bestanden
-- Unit- und Integrations-Vertragstests: 12/12 bestanden
+- Unit- und Integrations-Vertragstests: 15/15 bestanden
 - ESLint: bestanden (0 Fehler, 0 Warnungen)
 - Expo Doctor: 20/20 Checks bestanden
 - iOS JavaScript/Hermes-Bundle: erfolgreich erzeugt
@@ -148,7 +151,7 @@ Ergebnis vom 25.10.2026 nach Level 2:
 - Zusammengesetzte Gerichte werden in Hauptbestandteile zerlegt; Rezeptdetails können fehlen und müssen geprüft werden.
 - USDA-Suche arbeitet mit einem vom Parser erzeugten englischen Suchbegriff. Unsichere Zuordnungen werden markiert.
 - Die Referenzengine deckt zunächst acht handlungsrelevante Nährstoffe ab. Eine spätere Version sollte die vollständige BLV-Referenztabelle versioniert importieren.
-- Für einen App-Store-Release sind zusätzlich veröffentlichte Datenschutz- und Support-URLs, ein vollständiger Account-Löschprozess, Accessibility-Audit und Beta-Evaluation mit vielfältigen echten Mahlzeiten erforderlich.
+- Für einen App-Store-Release sind zusätzlich veröffentlichte Datenschutz- und Support-URLs, eigene SMTP-Zustellung, Accessibility-Audit und Beta-Evaluation mit vielfältigen echten Mahlzeiten erforderlich.
 
 ## Quellen
 

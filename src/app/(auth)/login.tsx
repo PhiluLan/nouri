@@ -1,22 +1,38 @@
 import { useState } from 'react';
 import { Alert, StyleSheet, Text, View } from 'react-native';
-import { Redirect } from 'expo-router';
+import { Redirect, useLocalSearchParams } from 'expo-router';
 import { BrandMark, Button, Card, Field, Heading, Notice, Screen } from '../../components/ui';
 import { colors, radii, spacing } from '../../components/theme';
 import { useAuth } from '../../contexts/AuthContext';
 import { isSupabaseConfigured, supabase } from '../../lib/supabase';
+import { passwordResetRedirectUrl } from '../../lib/auth-links';
 
 export default function LoginScreen() {
   const { session } = useAuth();
+  const params = useLocalSearchParams<{ mode?: string }>();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [mode, setMode] = useState<'login' | 'signup'>('login');
+  const [mode, setMode] = useState<'login' | 'signup' | 'reset'>(params.mode === 'reset' ? 'reset' : 'login');
   const [busy, setBusy] = useState(false);
 
   if (session) return <Redirect href="/" />;
 
   async function submit() {
     if (!isSupabaseConfigured) return Alert.alert('Konfiguration fehlt', 'Trage die Supabase URL und den Publishable Key in .env ein.');
+    if (mode === 'reset') {
+      if (!email.trim()) return Alert.alert('E-Mail fehlt', 'Gib die E-Mail-Adresse deines nouri-Kontos ein.');
+      setBusy(true);
+      try {
+        const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: passwordResetRedirectUrl });
+        if (error) throw error;
+        Alert.alert('E-Mail ist unterwegs', 'Falls ein Konto zu dieser Adresse existiert, erhältst du einen sicheren Link zum Zurücksetzen.');
+      } catch (error) {
+        Alert.alert('Link nicht versendet', error instanceof Error ? error.message : 'Unbekannter Fehler');
+      } finally {
+        setBusy(false);
+      }
+      return;
+    }
     if (!email.trim() || password.length < 8) return Alert.alert('Eingabe prüfen', 'Bitte gib eine gültige E-Mail und mindestens 8 Zeichen als Passwort ein.');
     setBusy(true);
     try {
@@ -34,15 +50,16 @@ export default function LoginScreen() {
 
   return <Screen>
     <View style={styles.brand}><BrandMark /></View>
-    <Heading eyebrow="Einfach essen. Klarer sehen." title={mode === 'login' ? 'Willkommen zurück' : 'Lerne deine Ernährung besser kennen'}>
-      Ohne Kalorienziele. Mit nachvollziehbaren Nährstoffdaten und konkreten Ideen für den nächsten Teller.
+    <Heading eyebrow={mode === 'reset' ? 'Kontosicherheit' : 'Einfach essen. Klarer sehen.'} title={mode === 'login' ? 'Willkommen zurück' : mode === 'signup' ? 'Lerne deine Ernährung besser kennen' : 'Passwort zurücksetzen'}>
+      {mode === 'reset' ? 'Wir senden dir einen sicheren Link, der nouri direkt auf deinem iPhone öffnet.' : 'Ohne Kalorienziele. Mit nachvollziehbaren Nährstoffdaten und konkreten Ideen für den nächsten Teller.'}
     </Heading>
     {!isSupabaseConfigured ? <Notice warning>Setup-Modus: Die App benötigt die Werte aus .env.example. Es werden keine Mock-Nutzerdaten eingesetzt.</Notice> : null}
     <Card elevated style={styles.form}>
       <Field label="E-Mail" value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" autoComplete="email" textContentType="emailAddress" />
-      <Field label="Passwort" value={password} onChangeText={setPassword} secureTextEntry autoComplete={mode === 'login' ? 'current-password' : 'new-password'} textContentType={mode === 'login' ? 'password' : 'newPassword'} />
-      <Button title={mode === 'login' ? 'Anmelden' : 'Konto erstellen'} onPress={() => void submit()} loading={busy} />
-      <Button ghost title={mode === 'login' ? 'Neu hier? Konto erstellen' : 'Schon registriert? Anmelden'} onPress={() => setMode(mode === 'login' ? 'signup' : 'login')} />
+      {mode !== 'reset' ? <Field label="Passwort" value={password} onChangeText={setPassword} secureTextEntry autoComplete={mode === 'login' ? 'current-password' : 'new-password'} textContentType={mode === 'login' ? 'password' : 'newPassword'} /> : null}
+      <Button title={mode === 'login' ? 'Anmelden' : mode === 'signup' ? 'Konto erstellen' : 'Rücksetzlink senden'} onPress={() => void submit()} loading={busy} />
+      {mode === 'login' ? <Button ghost title="Passwort vergessen?" onPress={() => setMode('reset')} /> : null}
+      <Button ghost title={mode === 'signup' ? 'Schon registriert? Anmelden' : mode === 'reset' ? 'Zurück zur Anmeldung' : 'Neu hier? Konto erstellen'} onPress={() => setMode(mode === 'login' ? 'signup' : 'login')} />
     </Card>
     <View style={styles.trustRow}>
       <Text style={styles.trustMark}>✓</Text><Text style={styles.trustText}>Quellenbasierte Lebensmittelwerte</Text>
