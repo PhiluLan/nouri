@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import test from 'node:test';
 
-const migrationPath = new URL('../supabase/migrations/20261025135837_initial_nouri_schema.sql', import.meta.url);
+const migrationPath = new URL('../supabase/migrations/20261025173319_initial_nouri_schema.sql', import.meta.url);
 const edgePath = new URL('../supabase/functions/analyze-meal/index.ts', import.meta.url);
 const migration = readFileSync(migrationPath, 'utf8');
 const edge = readFileSync(edgePath, 'utf8');
