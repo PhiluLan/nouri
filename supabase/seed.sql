@@ -1,0 +1,1 @@
+-- No production-like or mock nutrition data is seeded intentionally.
