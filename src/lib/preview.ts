@@ -1,5 +1,5 @@
 import { scaleNutrients } from '../nutrition/engine';
-import type { Meal, MealItem, NutrientMap, ParsedMeal, Profile } from '../types/domain';
+import type { Meal, MealItem, MealTemplate, NutrientMap, ParsedMeal, Profile } from '../types/domain';
 
 export const isPreviewMode = process.env.EXPO_PUBLIC_PREVIEW_MODE === 'true';
 
@@ -37,6 +37,7 @@ const catalog: Record<string, PreviewFood> = {
 };
 
 let previewMeals: Meal[] = seedMeals();
+let previewTemplates: MealTemplate[] = [];
 
 export async function previewAnalyzeMeal(rawText: string): Promise<ParsedMeal> {
   const normalized = rawText.toLowerCase();
@@ -77,6 +78,40 @@ export function savePreviewMeal(input: { mealId?: string; rawText: string; eaten
 
 export function deletePreviewMeal(id: string) {
   previewMeals = previewMeals.filter((meal) => meal.id !== id);
+}
+
+export function getPreviewMealTemplates(): MealTemplate[] {
+  return previewTemplates.map((template) => ({ ...template, items: template.items.map((item) => ({ ...item })) }));
+}
+
+export function savePreviewMealTemplate(input: { name: string; rawText: string; items: MealItem[] }): MealTemplate {
+  const now = new Date().toISOString();
+  const existing = previewTemplates.find((template) => template.name.toLowerCase() === input.name.toLowerCase());
+  const template: MealTemplate = {
+    id: existing?.id ?? `preview-template-${Date.now()}`,
+    name: input.name,
+    raw_text: input.rawText,
+    items: input.items,
+    usage_count: existing?.usage_count ?? 0,
+    last_used_at: existing?.last_used_at ?? null,
+    created_at: existing?.created_at ?? now,
+    updated_at: now,
+  };
+  previewTemplates = existing
+    ? previewTemplates.map((entry) => entry.id === existing.id ? template : entry)
+    : [template, ...previewTemplates];
+  return template;
+}
+
+export function markPreviewMealTemplateUsed(id: string) {
+  const now = new Date().toISOString();
+  previewTemplates = previewTemplates.map((template) => template.id === id
+    ? { ...template, usage_count: template.usage_count + 1, last_used_at: now, updated_at: now }
+    : template);
+}
+
+export function deletePreviewMealTemplate(id: string) {
+  previewTemplates = previewTemplates.filter((template) => template.id !== id);
 }
 
 function previewItem(food: PreviewFood, index: number): MealItem {

@@ -58,6 +58,17 @@ export interface Meal {
   meal_items: MealItem[];
 }
 
+export interface MealTemplate {
+  id: string;
+  name: string;
+  raw_text: string;
+  items: MealItem[];
+  usage_count: number;
+  last_used_at: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface ParsedMeal {
   raw_text: string;
   items: MealItem[];

@@ -1,7 +1,7 @@
 import { supabase } from '../lib/supabase';
 import { dayBounds, historyStart } from '../nutrition/engine';
-import { deletePreviewMeal, getPreviewMeal, getPreviewMeals, isPreviewMode, previewAnalyzeMeal, savePreviewMeal } from '../lib/preview';
-import type { Meal, MealItem, ParsedMeal } from '../types/domain';
+import { deletePreviewMeal, deletePreviewMealTemplate, getPreviewMeal, getPreviewMeals, getPreviewMealTemplates, isPreviewMode, markPreviewMealTemplateUsed, previewAnalyzeMeal, savePreviewMeal, savePreviewMealTemplate } from '../lib/preview';
+import type { Meal, MealItem, MealTemplate, ParsedMeal } from '../types/domain';
 
 export async function analyzeMeal(rawText: string): Promise<ParsedMeal> {
   if (isPreviewMode) return previewAnalyzeMeal(rawText);
@@ -54,6 +54,50 @@ export async function deleteMeal(id: string): Promise<void> {
     return;
   }
   const { error } = await supabase.from('meals').delete().eq('id', id);
+  if (error) throw error;
+}
+
+export async function fetchMealTemplates(): Promise<MealTemplate[]> {
+  if (isPreviewMode) return getPreviewMealTemplates();
+  const { data, error } = await supabase
+    .from('meal_templates')
+    .select('id, name, raw_text, items, usage_count, last_used_at, created_at, updated_at')
+    .order('last_used_at', { ascending: false, nullsFirst: false })
+    .order('updated_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []) as MealTemplate[];
+}
+
+export async function createMealTemplate(input: { name: string; rawText: string; items: MealItem[] }): Promise<MealTemplate> {
+  if (isPreviewMode) return savePreviewMealTemplate(input);
+  const { data: userData, error: userError } = await supabase.auth.getUser();
+  if (userError || !userData.user) throw userError ?? new Error('Bitte melde dich erneut an.');
+  const { data, error } = await supabase
+    .from('meal_templates')
+    .upsert({
+      user_id: userData.user.id,
+      name: input.name.trim(),
+      raw_text: input.rawText,
+      items: input.items,
+    }, { onConflict: 'user_id,name' })
+    .select('id, name, raw_text, items, usage_count, last_used_at, created_at, updated_at')
+    .single();
+  if (error) throw error;
+  return data as MealTemplate;
+}
+
+export async function markMealTemplateUsed(template: MealTemplate): Promise<void> {
+  if (isPreviewMode) return markPreviewMealTemplateUsed(template.id);
+  const { error } = await supabase
+    .from('meal_templates')
+    .update({ usage_count: template.usage_count + 1, last_used_at: new Date().toISOString() })
+    .eq('id', template.id);
+  if (error) throw error;
+}
+
+export async function deleteMealTemplate(id: string): Promise<void> {
+  if (isPreviewMode) return deletePreviewMealTemplate(id);
+  const { error } = await supabase.from('meal_templates').delete().eq('id', id);
   if (error) throw error;
 }
 
