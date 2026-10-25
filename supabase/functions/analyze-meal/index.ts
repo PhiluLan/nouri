@@ -42,7 +42,6 @@ const handler = withSupabase({ auth: 'user' }, async (request) => {
       const result: string[] = [];
       if (item.quantity_confidence !== 'high') result.push(`Menge für „${item.display_name}“ ist geschätzt.`);
       if (item.match_confidence === 'low') result.push(`USDA-Zuordnung für „${item.display_name}“ bitte prüfen.`);
-      if (item.missing_nutrients.length) result.push(`Für „${item.display_name}“ fehlen ${item.missing_nutrients.length} der betrachteten Nährstoffwerte.`);
       return result;
     });
     return json({ raw_text: text, items, warnings });
@@ -88,6 +87,8 @@ async function parseMeal(text: string, apiKey: string): Promise<ParsedItem[]> {
         'Konvertiere Volumen und übliche Portionen in eine plausible essbare Masse in Gramm.',
         'Wenn eine Menge fehlt, nutze eine konservative typische Portion und markiere quantity_confidence als low.',
         'search_query_en muss ein knapper englischer USDA-Suchbegriff inklusive Zubereitungsart sein.',
+        'Verwende genau das genannte Lebensmittel: Ergänze keine Geschmacksrichtung, Gemüsesorte oder Produktvariante, die nicht in der Eingabe steht.',
+        'Bei Pasta nenne die Form und ob das angegebene Gewicht gekocht oder trocken gemeint ist; suche niemals nach spinach pasta oder spaghetti squash, wenn dies nicht ausdrücklich genannt wurde.',
         'Bei zusammengesetzten Gerichten trenne erkennbare Hauptbestandteile; bleibe bei höchstens 12 Positionen.',
       ].join(' '),
       input: text,

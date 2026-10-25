@@ -8,7 +8,7 @@ test('ranks a raw banana above banana peppers', () => {
 
   assert.ok(scoreUsdaFood(banana, 'banana raw', 3) > scoreUsdaFood(pepper, 'banana raw', 0));
   assert.equal(matchConfidence(banana.description, 'banana raw'), 'high');
-  assert.equal(matchConfidence(pepper.description, 'banana raw'), 'medium');
+  assert.equal(matchConfidence(pepper.description, 'banana raw'), 'low');
 });
 
 test('ranks whole milk above ricotta made from whole milk', () => {
@@ -24,4 +24,15 @@ test('keeps the USDA result order relevant without preferring a derivative food'
   const snack = { description: 'Snacks, granola bars, oats, fruits and nuts', dataType: 'Survey (FNDDS)' };
 
   assert.ok(scoreUsdaFood(oats, 'rolled oats dry', 2) > scoreUsdaFood(snack, 'rolled oats dry', 0));
+});
+
+test('rejects spinach pasta and spaghetti squash for plain spaghetti', () => {
+  const plain = { description: 'Spaghetti, cooked, unenriched, without added salt', dataType: 'SR Legacy' };
+  const spinach = { description: 'Spaghetti, spinach, dry', dataType: 'SR Legacy' };
+  const squash = { description: 'Spaghetti squash, cooked', dataType: 'Survey (FNDDS)' };
+
+  assert.ok(scoreUsdaFood(plain, 'spaghetti cooked', 4) > scoreUsdaFood(spinach, 'spaghetti cooked', 0));
+  assert.ok(scoreUsdaFood(plain, 'spaghetti cooked', 4) > scoreUsdaFood(squash, 'spaghetti cooked', 0));
+  assert.equal(matchConfidence(spinach.description, 'spaghetti dry'), 'low');
+  assert.equal(matchConfidence(squash.description, 'spaghetti cooked'), 'low');
 });

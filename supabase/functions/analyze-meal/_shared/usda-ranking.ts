@@ -11,6 +11,8 @@ const preparationWords = new Set([
 const conflictingCategories: Record<string, Set<string>> = {
   banana: new Set(['pepper', 'peppers']),
   milk: new Set(['cheese', 'dessert', 'yogurt']),
+  pasta: new Set(['squash', 'spinach']),
+  spaghetti: new Set(['squash', 'spinach']),
 };
 
 export function scoreUsdaFood(food: UsdaSearchCandidate, query: string, index: number): number {
@@ -22,8 +24,7 @@ export function scoreUsdaFood(food: UsdaSearchCandidate, query: string, index: n
   const primaryScore = primaryPosition === 0 ? 40 : primaryPosition > 0 ? 8 : -40;
   const overlapScore = wordOverlap(food.description, query) * 12;
   const dataTypeScore: Record<string, number> = { Foundation: 3, 'SR Legacy': 2, 'Survey (FNDDS)': 1 };
-  const firstDescriptionWord = descriptionWords[0];
-  const conflictPenalty = primaryFood && firstDescriptionWord && conflictingCategories[primaryFood]?.has(firstDescriptionWord) ? 50 : 0;
+  const conflictPenalty = hasCategoryConflict(primaryFood, queryWords, descriptionWords) ? 60 : 0;
 
   return relevanceScore + primaryScore + overlapScore + (dataTypeScore[food.dataType] ?? 0) - conflictPenalty;
 }
@@ -35,9 +36,16 @@ export function matchConfidence(description: string, query: string): 'high' | 'm
   const primaryPosition = primaryFood ? descriptionWords.indexOf(primaryFood) : -1;
   const overlap = wordOverlap(description, query);
 
+  if (hasCategoryConflict(primaryFood, queryWords, descriptionWords)) return 'low';
   if (primaryPosition === 0 && overlap >= 0.5) return 'high';
   if (primaryPosition >= 0 && overlap >= 0.5) return 'medium';
   return 'low';
+}
+
+function hasCategoryConflict(primaryFood: string | undefined, queryWords: string[], descriptionWords: string[]): boolean {
+  if (!primaryFood) return false;
+  const conflicts = conflictingCategories[primaryFood];
+  return Boolean(conflicts && descriptionWords.some((word) => conflicts.has(word) && !queryWords.includes(word)));
 }
 
 export function wordOverlap(description: string, query: string): number {

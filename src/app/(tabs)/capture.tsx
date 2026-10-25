@@ -9,6 +9,7 @@ import { colors, radii, spacing } from '../../components/theme';
 import { analyzeMeal, saveMeal } from '../../services/meals';
 import type { MealItem } from '../../types/domain';
 import { isPreviewMode } from '../../lib/preview';
+import { isSuspiciousFoodMatch } from '../../nutrition/food-match';
 
 const examples = [
   'Haferflocken mit Milch und Banane',
@@ -21,8 +22,9 @@ export default function CaptureScreen() {
   const appliedSuggestion = useRef(false);
   const [text, setText] = useState('');
   const [items, setItems] = useState<MealItem[]>([]);
-  const [warnings, setWarnings] = useState<string[]>([]);
   const [busy, setBusy] = useState<'analyze' | 'save' | null>(null);
+  const reviewCount = items.filter((item) => item.match_confidence === 'low' || isSuspiciousFoodMatch(item)).length;
+  const estimatedCount = items.filter((item) => item.quantity_confidence !== 'high').length;
 
   useEffect(() => {
     if (suggestion && !appliedSuggestion.current) {
@@ -35,7 +37,6 @@ export default function CaptureScreen() {
     setText(value);
     if (items.length) {
       setItems([]);
-      setWarnings([]);
     }
   }
 
@@ -45,7 +46,6 @@ export default function CaptureScreen() {
     try {
       const result = await analyzeMeal(text.trim());
       setItems(result.items);
-      setWarnings(result.warnings ?? []);
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
     } catch (error) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -61,7 +61,7 @@ export default function CaptureScreen() {
     try {
       await saveMeal({ rawText: text.trim(), eatenAt: new Date().toISOString(), items });
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Success);
-      setText(''); setItems([]); setWarnings([]);
+      setText(''); setItems([]);
       router.replace('/(tabs)/day');
     } catch (error) {
       await Haptics.notificationAsync(Haptics.NotificationFeedbackType.Error);
@@ -98,14 +98,14 @@ export default function CaptureScreen() {
       </Card>
     </> : <>
       <SectionHeader title="Erkannte Lebensmittel" meta={`${items.length} ${items.length === 1 ? 'Position' : 'Positionen'}`} />
-      {warnings.length ? <Notice warning>{warnings.join('\n')}</Notice> : <Notice>Alle Positionen haben eine dokumentierte USDA-Zuordnung. Prüfe trotzdem, ob Lebensmittel und Mengen zu deiner Mahlzeit passen.</Notice>}
+      {reviewCount ? <Notice warning>{reviewCount === 1 ? 'Eine Zuordnung passt nicht eindeutig. Bitte wähle dort „Andere Zuordnung suchen“.' : `${reviewCount} Zuordnungen passen nicht eindeutig. Bitte suche für diese Positionen eine andere Zuordnung.`}</Notice> : estimatedCount ? <Notice warning>{estimatedCount === 1 ? 'Bei einer Position wurde die Menge geschätzt. Prüfe kurz, ob sie für dich passt.' : `Bei ${estimatedCount} Positionen wurden Mengen geschätzt. Prüfe sie kurz.`}</Notice> : <Notice>Lebensmittel und Mengen sind eindeutig erkannt. Ein kurzer Kontrollblick genügt.</Notice>}
       <MealEditor items={items} onChange={setItems} />
       <Card tonal style={styles.sourceNote}>
         <Text style={styles.sourceTitle}>Nachvollziehbar berechnet</Text>
         <Text style={styles.sourceText}>USDA-Wert pro 100 g × deine Menge. Nicht dokumentierte Werte bleiben unbekannt und werden niemals als null ergänzt.</Text>
       </Card>
       <Button title="Mahlzeit speichern" onPress={() => void save()} loading={busy === 'save'} disabled={busy !== null || !mealItemsAreSavable(items)} />
-      <Button ghost title="Eingabe verwerfen" onPress={() => { setText(''); setItems([]); setWarnings([]); }} disabled={busy !== null} />
+      <Button ghost title="Eingabe verwerfen" onPress={() => { setText(''); setItems([]); }} disabled={busy !== null} />
     </>}
   </Screen>;
 }

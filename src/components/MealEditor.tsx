@@ -2,12 +2,14 @@ import { useState } from 'react';
 import { Alert, Pressable, StyleSheet, Text, TextInput, View } from 'react-native';
 import { analyzeMeal } from '../services/meals';
 import { hasUsableNutrientData, missingNutrients, updateItemAmount } from '../nutrition/engine';
+import { isSuspiciousFoodMatch } from '../nutrition/food-match';
 import { NUTRIENT_KEYS, type MealItem } from '../types/domain';
 import { Button, Card, Notice } from './ui';
 import { colors, radii, spacing } from './theme';
 
 export function MealEditor({ items, onChange }: { items: MealItem[]; onChange: (items: MealItem[]) => void }) {
   const [matching, setMatching] = useState<number | null>(null);
+  const [openDetails, setOpenDetails] = useState<number | null>(null);
 
   function patch(index: number, next: MealItem) {
     onChange(items.map((item, itemIndex) => itemIndex === index ? next : item));
@@ -51,7 +53,10 @@ export function MealEditor({ items, onChange }: { items: MealItem[]; onChange: (
   }
 
   return <View style={styles.list}>
-    {items.map((item, index) => <Card elevated key={`${item.fdc_id ?? 'new'}-${index}`} style={styles.card}>
+    {items.map((item, index) => {
+      const suspicious = isSuspiciousFoodMatch(item);
+      const needsReview = suspicious || item.match_confidence === 'low';
+      return <Card elevated key={`${item.fdc_id ?? 'new'}-${index}`} style={styles.card}>
       <View style={styles.rowBetween}>
         <View style={styles.indexBadge}><Text style={styles.index}>{index + 1}</Text></View>
         <Pressable accessibilityRole="button" hitSlop={10} onPress={() => onChange(items.filter((_, itemIndex) => itemIndex !== index))} style={styles.removeButton}><Text style={styles.remove}>Entfernen</Text></Pressable>
@@ -68,31 +73,44 @@ export function MealEditor({ items, onChange }: { items: MealItem[]; onChange: (
         <View style={styles.unitBadge}><Text style={styles.unit}>Gramm</Text></View>
       </View>
       {hasUsableNutrientData(item) ? <>
-        <View style={styles.sourceBox}>
+        <View style={[styles.sourceBox, needsReview && styles.sourceBoxWarning]}>
           <View style={styles.sourceHeader}>
-            <Text style={styles.sourceTitle}>{item.data_type === 'Preview-Mock' ? 'Lokale Preview-Daten' : 'USDA FoodData Central'}</Text>
-            <View style={[styles.confidence, item.match_confidence !== 'high' && styles.confidenceWarning]}><Text style={styles.confidenceText}>{confidenceLabel(item.match_confidence)}</Text></View>
+            <View style={[styles.sourceIcon, needsReview && styles.sourceIconWarning]}><Text style={styles.sourceIconText}>{needsReview ? '!' : '✓'}</Text></View>
+            <View style={styles.sourceCopy}>
+              <Text style={styles.sourceTitle}>{needsReview ? 'Zuordnung bitte prüfen' : 'Passender Nährwert-Eintrag gefunden'}</Text>
+              <Text style={styles.sourceHint}>{sourceSummary(item, suspicious)}</Text>
+            </View>
           </View>
-          <Text style={styles.sourceDescription}>{item.fdc_description}</Text>
-          <Text style={styles.sourceMeta}>{item.data_type === 'Preview-Mock' ? 'Nicht für Produktionsberechnungen' : `FDC ${item.fdc_id} · ${item.data_type} · ${Object.keys(item.nutrients_per_100g).length}/${NUTRIENT_KEYS.length} Werte`}</Text>
+          {needsReview ? <Button secondary title="Andere Zuordnung suchen" onPress={() => void rematch(index)} loading={matching === index} /> : null}
+          <Pressable accessibilityRole="button" accessibilityState={{ expanded: openDetails === index }} onPress={() => setOpenDetails(openDetails === index ? null : index)} style={({ pressed }) => [styles.detailsButton, pressed && styles.pressed]}>
+            <Text style={styles.detailsButtonText}>{openDetails === index ? 'Quelldetails ausblenden' : 'Datenquelle & Details'}</Text><Text style={styles.detailsChevron}>{openDetails === index ? '↑' : '↓'}</Text>
+          </Pressable>
+          {openDetails === index ? <View style={styles.technicalBox}>
+            <Text style={styles.technicalLabel}>Technischer USDA-Quelldatensatz</Text>
+            <Text style={styles.sourceDescription}>{item.fdc_description}</Text>
+            <Text style={styles.sourceMeta}>{item.data_type === 'Preview-Mock' ? 'Lokale Testdaten · nicht für Produktionsberechnungen' : `FoodData Central ${item.fdc_id} · ${item.data_type}`}</Text>
+            <Text style={styles.sourceMeta}>{Object.keys(item.nutrients_per_100g).length} von {NUTRIENT_KEYS.length} betrachteten Werten dokumentiert. Fehlende Werte bleiben unbekannt.</Text>
+          </View> : null}
         </View>
         {item.quantity_confidence !== 'high' ? <Notice warning>Die eingegebene Portionsmenge ist {item.quantity_confidence === 'low' ? 'unsicher' : 'geschätzt'}. Bitte prüfen.</Notice> : null}
       </> : <>
         <Notice warning>Diese Bezeichnung ist noch nicht mit FoodData Central abgeglichen. Ohne Quelle kann sie nicht gespeichert werden.</Notice>
         <Button secondary title="Mit USDA abgleichen" onPress={() => rematch(index)} loading={matching === index} />
       </>}
-    </Card>)}
+    </Card>;
+    })}
   </View>;
 }
 
 export function mealItemsAreSavable(items: MealItem[]): boolean {
-  return items.length > 0 && items.every((item) => item.amount_g > 0 && item.display_name.trim() && hasUsableNutrientData(item));
+  return items.length > 0 && items.every((item) => item.amount_g > 0 && item.display_name.trim() && hasUsableNutrientData(item) && item.match_confidence !== 'low' && !isSuspiciousFoodMatch(item));
 }
 
-function confidenceLabel(value: MealItem['match_confidence']) {
-  if (value === 'high') return 'hohe Sicherheit';
-  if (value === 'medium') return 'mittlere Sicherheit';
-  return 'bitte prüfen';
+function sourceSummary(item: MealItem, suspicious: boolean) {
+  if (suspicious) return 'Der gefundene Eintrag beschreibt wahrscheinlich ein anderes Lebensmittel.';
+  if (item.match_confidence === 'low') return 'Die Bezeichnung passt nicht eindeutig zur Datenquelle.';
+  if (item.data_type === 'Preview-Mock') return 'Klar gekennzeichnete lokale Testdaten.';
+  return item.match_confidence === 'high' ? 'Lebensmittel und Datenquelle passen gut zusammen.' : 'Plausible Zuordnung – ein kurzer Blick lohnt sich.';
 }
 
 const styles = StyleSheet.create({
@@ -110,12 +128,21 @@ const styles = StyleSheet.create({
   amountField: { flex: 1, gap: spacing.xs },
   unitBadge: { height: 50, borderRadius: radii.small, paddingHorizontal: 14, backgroundColor: colors.primarySoft, justifyContent: 'center' },
   unit: { color: colors.primary, fontSize: 13, fontWeight: '700' },
-  sourceBox: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line, paddingTop: spacing.md, gap: 5 },
-  sourceHeader: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: spacing.sm },
-  sourceTitle: { color: colors.primary, fontSize: 12, fontWeight: '800' },
+  sourceBox: { borderTopWidth: StyleSheet.hairlineWidth, borderTopColor: colors.line, paddingTop: spacing.md, gap: spacing.sm },
+  sourceBoxWarning: { borderTopColor: colors.warning },
+  sourceHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
+  sourceIcon: { width: 34, height: 34, borderRadius: 13, backgroundColor: colors.primarySoft, alignItems: 'center', justifyContent: 'center' },
+  sourceIconWarning: { backgroundColor: colors.warm },
+  sourceIconText: { color: colors.primary, fontSize: 16, fontWeight: '900' },
+  sourceCopy: { flex: 1 },
+  sourceTitle: { color: colors.ink, fontSize: 13, fontWeight: '800' },
+  sourceHint: { color: colors.muted, fontSize: 11, lineHeight: 16, marginTop: 2 },
+  detailsButton: { minHeight: 42, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', borderRadius: radii.small, paddingHorizontal: 12, backgroundColor: colors.primarySoft },
+  detailsButtonText: { color: colors.primary, fontSize: 12, fontWeight: '800' },
+  detailsChevron: { color: colors.primary, fontSize: 15, fontWeight: '800' },
+  technicalBox: { backgroundColor: colors.background, borderRadius: radii.small, padding: 12, gap: 5 },
+  technicalLabel: { color: colors.muted, fontSize: 10, fontWeight: '800', letterSpacing: 0.8, textTransform: 'uppercase' },
   sourceDescription: { color: colors.inkSoft, fontSize: 14, lineHeight: 20 },
   sourceMeta: { color: colors.muted, fontSize: 11 },
-  confidence: { backgroundColor: colors.primarySoft, borderRadius: radii.pill, paddingHorizontal: 8, paddingVertical: 4 },
-  confidenceWarning: { backgroundColor: colors.warm },
-  confidenceText: { color: colors.primary, fontSize: 10, fontWeight: '800' },
+  pressed: { opacity: 0.65 },
 });
