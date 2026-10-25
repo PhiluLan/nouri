@@ -3,6 +3,7 @@ import { router, useFocusEffect, useLocalSearchParams } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Alert, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from 'react-native';
 import { AppTopBar } from '../../components/AppTopBar';
+import { NouriMascot } from '../../components/NouriMascot';
 import { MealEditor, mealItemsAreSavable } from '../../components/MealEditor';
 import { Button, Card, Chip, Notice, Screen, SectionHeader } from '../../components/ui';
 import { colors, radii, spacing } from '../../components/theme';
@@ -146,10 +147,13 @@ export default function CaptureScreen() {
   return <Screen refreshing={mealsLoading || templatesLoading} onRefresh={() => void Promise.all([refreshMeals(), refreshTemplates()])}>
     <AppTopBar />
     {!items.length ? <>
-      <View style={styles.hero}>
-        <Text style={styles.heroEyebrow}>{greeting()}</Text>
-        <Text style={styles.heroTitle}>Was darf nouri{today.length ? ' noch' : ''} für dich festhalten?</Text>
-        <Text style={styles.heroCopy}>{today.length ? `${today.length} ${today.length === 1 ? 'Eintrag' : 'Einträge'} heute · Erzähl es frei oder nimm eine Abkürzung.` : 'Erzähl es frei oder nimm eine Abkürzung.'}</Text>
+      <View style={styles.heroRow}>
+        <View style={styles.hero}>
+          <Text style={styles.heroEyebrow}>{greeting()}</Text>
+          <Text style={styles.heroTitle}>Was darf nouri{today.length ? ' noch' : ''} für dich festhalten?</Text>
+          <Text style={styles.heroCopy}>{today.length ? `${today.length} ${today.length === 1 ? 'Eintrag' : 'Einträge'} heute · Erzähl es frei oder nimm eine Abkürzung.` : 'Erzähl es frei oder nimm eine Abkürzung.'}</Text>
+        </View>
+        <NouriMascot />
       </View>
       {isPreviewMode ? <Notice warning>Lokale Vorschau · Eingaben, Erkennung und Werte sind Testdaten und werden nicht hochgeladen.</Notice> : null}
 
@@ -218,10 +222,11 @@ function greeting(): string { const hour = new Date().getHours(); return hour < 
 function sameMeal(left: string, right: string): boolean { return left.trim().toLowerCase() === right.trim().toLowerCase(); }
 
 const styles = StyleSheet.create({
-  hero: { gap: spacing.xs, paddingTop: spacing.xs, marginBottom: spacing.xs },
+  heroRow: { flexDirection: 'row', alignItems: 'flex-end', gap: spacing.xs, marginBottom: spacing.xs },
+  hero: { flex: 1, gap: spacing.xs, paddingTop: spacing.xs },
   reviewHeading: { gap: spacing.xs, paddingTop: spacing.xs },
   heroEyebrow: { color: colors.primary, fontSize: 11, lineHeight: 15, fontWeight: '800', letterSpacing: 1.5, textTransform: 'uppercase' },
-  heroTitle: { color: colors.ink, fontSize: 33, lineHeight: 38, fontWeight: '800', letterSpacing: -1.2 },
+  heroTitle: { color: colors.ink, fontSize: 30, lineHeight: 35, fontWeight: '800', letterSpacing: -1.1 },
   heroCopy: { color: colors.inkSoft, fontSize: 15, lineHeight: 22, maxWidth: 520 },
   composer: { gap: spacing.md, padding: 18 },
   composerTop: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
