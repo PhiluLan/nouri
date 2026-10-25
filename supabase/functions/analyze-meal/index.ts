@@ -1,4 +1,5 @@
 import { withSupabase } from 'npm:@supabase/server@1';
+import { matchConfidence, scoreUsdaFood } from './_shared/usda-ranking.ts';
 
 type Confidence = 'high' | 'medium' | 'low';
 type NutrientKey = 'protein' | 'fiber' | 'calcium' | 'iron' | 'potassium' | 'vitaminC' | 'vitaminB12' | 'folate';
@@ -122,7 +123,7 @@ async function enrichWithUsda(parsed: ParsedItem, apiKey: string) {
   });
   if (!searchResponse.ok) throw new Error(`USDA-Suche fehlgeschlagen (${searchResponse.status}).`);
   const search = await searchResponse.json() as { foods?: FoodSearchResult[] };
-  const ranked = (search.foods ?? []).map((food, index) => ({ food, score: scoreFood(food, parsed.search_query_en, index) })).sort((a, b) => b.score - a.score);
+  const ranked = (search.foods ?? []).map((food, index) => ({ food, score: scoreUsdaFood(food, parsed.search_query_en, index) })).sort((a, b) => b.score - a.score);
   const selected = ranked[0];
   if (!selected) return unmatched(parsed, 'Kein Eintrag in FoodData Central gefunden.');
 
@@ -131,15 +132,14 @@ async function enrichWithUsda(parsed: ParsedItem, apiKey: string) {
   const detail = await detailResponse.json() as FoodSearchResult;
   const per100g = extractNutrients(detail.foodNutrients ?? []);
   const missing = (Object.keys(nutrientNumbers) as NutrientKey[]).filter((key) => per100g[key] === undefined);
-  const overlap = wordOverlap(selected.food.description, parsed.search_query_en);
-  const matchConfidence: Confidence = overlap >= 0.6 ? 'high' : overlap >= 0.3 ? 'medium' : 'low';
+  const confidence = matchConfidence(selected.food.description, parsed.search_query_en);
 
   return {
     display_name: parsed.food_name_de,
     amount_g: parsed.amount_g,
     portion_label: parsed.portion_label,
     quantity_confidence: parsed.quantity_confidence,
-    match_confidence: matchConfidence,
+    match_confidence: confidence,
     fdc_id: selected.food.fdcId,
     fdc_description: selected.food.description,
     data_type: selected.food.dataType,
@@ -174,18 +174,6 @@ function nutrientAmount(value: unknown): number | null {
   const item = value as { value?: number; amount?: number };
   const amount = item.value ?? item.amount;
   return typeof amount === 'number' && Number.isFinite(amount) ? amount : null;
-}
-
-function scoreFood(food: FoodSearchResult, query: string, index: number): number {
-  const typeScore: Record<string, number> = { Foundation: 4, 'SR Legacy': 3, 'Survey (FNDDS)': 2 };
-  return (typeScore[food.dataType] ?? 0) * 10 + wordOverlap(food.description, query) * 20 + Math.max(0, 8 - index);
-}
-
-function wordOverlap(description: string, query: string): number {
-  const normalize = (value: string) => value.toLowerCase().replace(/[^a-z0-9 ]/g, ' ').split(/\s+/).filter((word) => word.length > 2);
-  const queryWords = [...new Set(normalize(query))];
-  const descriptionWords = new Set(normalize(description));
-  return queryWords.length ? queryWords.filter((word) => descriptionWords.has(word)).length / queryWords.length : 0;
 }
 
 function scale(values: Partial<Record<NutrientKey, number>>, amountG: number) {
