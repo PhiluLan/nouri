@@ -65,10 +65,10 @@ export function dayBounds(date = new Date()): { start: string; end: string } {
   return { start: start.toISOString(), end: end.toISOString() };
 }
 
-export function sevenDayStart(now = new Date()): string {
+export function historyStart(days: number, now = new Date()): string {
   const start = new Date(now);
   start.setHours(0, 0, 0, 0);
-  start.setDate(start.getDate() - 6);
+  start.setDate(start.getDate() - Math.max(0, days - 1));
   return start.toISOString();
 }
 

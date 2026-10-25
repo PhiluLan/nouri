@@ -44,7 +44,7 @@ export default function DayScreen() {
       </Card>
 
       <SectionHeader title="Nährstoffe" meta="bis jetzt" />
-      <NutrientSummary totals={totals} references={references} />
+      <NutrientSummary totals={totals} references={references} meals={meals} />
       <Text style={styles.helper}>„Mind.“ bedeutet: Mindestens dieser Wert ist dokumentiert; fehlende Daten wurden nicht als null ergänzt.</Text>
     </> : null}
 

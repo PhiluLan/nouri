@@ -1,16 +1,18 @@
 import { useState } from 'react';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
-import type { NutrientKey, NutrientReference, NutrientTotal } from '../types/domain';
+import type { Meal, NutrientKey, NutrientReference, NutrientTotal } from '../types/domain';
 import { colors, radii, spacing } from './theme';
 import { Card } from './ui';
 import { NutrientInfoModal } from './NutrientInfoModal';
+import { NutrientSourcesModal } from './NutrientSourcesModal';
 
 const featuredKeys: NutrientKey[] = ['protein', 'fiber', 'epaDha', 'folate', 'vitaminB12', 'vitaminC', 'vitaminD', 'calcium', 'iron', 'potassium'];
 const groupNames: Record<NutrientReference['group'], string> = { basis: 'Grundlage', fats: 'Essenzielle Fettsäuren', vitamins: 'Vitamine', minerals: 'Mineralstoffe & Spurenelemente' };
 
-export function NutrientSummary({ totals, references }: { totals: NutrientTotal[]; references: NutrientReference[] }) {
+export function NutrientSummary({ totals, references, meals }: { totals: NutrientTotal[]; references: NutrientReference[]; meals: Meal[] }) {
   const [expanded, setExpanded] = useState(false);
   const [selected, setSelected] = useState<NutrientReference | null>(null);
+  const [selectedSources, setSelectedSources] = useState<NutrientReference | null>(null);
   const featured = featuredKeys.map((key) => references.find((item) => item.key === key)).filter((item): item is NutrientReference => Boolean(item));
   const additional = references.filter((item) => !featuredKeys.includes(item.key));
 
@@ -23,7 +25,7 @@ export function NutrientSummary({ totals, references }: { totals: NutrientTotal[
         </View>
         <View style={styles.tenBadge}><Text style={styles.tenBadgeText}>10</Text></View>
       </View>
-      {featured.map((reference, index) => <NutrientRow key={reference.key} reference={reference} total={totals.find((item) => item.key === reference.key)} onInfo={() => setSelected(reference)} featured divider={index < featured.length - 1} />)}
+      {featured.map((reference, index) => <NutrientRow key={reference.key} reference={reference} total={totals.find((item) => item.key === reference.key)} onInfo={() => setSelected(reference)} onSources={() => setSelectedSources(reference)} featured divider={index < featured.length - 1} />)}
     </Card>
 
     <Pressable accessibilityRole="button" accessibilityState={{ expanded }} onPress={() => setExpanded((value) => !value)} style={({ pressed }) => [styles.expandButton, pressed && styles.pressed]}>
@@ -39,16 +41,17 @@ export function NutrientSummary({ totals, references }: { totals: NutrientTotal[
         const showGroup = index === 0 || additional[index - 1].group !== reference.group;
         return <View key={reference.key}>
           {showGroup ? <Text style={[styles.group, index > 0 && styles.groupSpacing]}>{groupNames[reference.group]}</Text> : null}
-          <NutrientRow reference={reference} total={totals.find((item) => item.key === reference.key)} onInfo={() => setSelected(reference)} divider={index < additional.length - 1} />
+          <NutrientRow reference={reference} total={totals.find((item) => item.key === reference.key)} onInfo={() => setSelected(reference)} onSources={() => setSelectedSources(reference)} divider={index < additional.length - 1} />
         </View>;
       })}
     </Card> : null}
 
     <NutrientInfoModal reference={selected} onClose={() => setSelected(null)} />
+    <NutrientSourcesModal reference={selectedSources} meals={meals} onClose={() => setSelectedSources(null)} />
   </>;
 }
 
-function NutrientRow({ reference, total, onInfo, featured = false, divider = false }: { reference: NutrientReference; total?: NutrientTotal; onInfo: () => void; featured?: boolean; divider?: boolean }) {
+function NutrientRow({ reference, total, onInfo, onSources, featured = false, divider = false }: { reference: NutrientReference; total?: NutrientTotal; onInfo: () => void; onSources: () => void; featured?: boolean; divider?: boolean }) {
   const amount = total?.amount ?? null;
   const ratio = amount === null ? 0 : Math.min(amount / reference.target, 1);
   const good = amount !== null && (reference.kind === 'maximum' ? amount <= reference.target : ratio >= 0.8);
@@ -58,7 +61,10 @@ function NutrientRow({ reference, total, onInfo, featured = false, divider = fal
         <Text style={[styles.name, featured && styles.nameFeatured]}>{reference.label}</Text>
         <Text style={styles.status}>{statusLabel(reference, amount, ratio)}</Text>
       </View>
-      <Pressable accessibilityRole="button" accessibilityLabel={`${reference.label} einfach erklärt`} hitSlop={8} onPress={onInfo} style={({ pressed }) => [styles.info, pressed && styles.pressed]}><Text style={styles.infoText}>i</Text></Pressable>
+      <View style={styles.actions}>
+        <Pressable accessibilityRole="button" accessibilityLabel={`Herkunft von ${reference.label} anzeigen`} onPress={onSources} style={({ pressed }) => [styles.sourcesButton, pressed && styles.pressed]}><Text style={styles.sourcesText}>Woher?</Text></Pressable>
+        <Pressable accessibilityRole="button" accessibilityLabel={`${reference.label} einfach erklärt`} hitSlop={8} onPress={onInfo} style={({ pressed }) => [styles.info, pressed && styles.pressed]}><Text style={styles.infoText}>i</Text></Pressable>
+      </View>
     </View>
     <View style={styles.amountRow}>
       <Text style={[styles.amount, featured && styles.amountFeatured]}>{amount === null ? 'Noch keine Daten' : `${total?.complete ? '' : 'mind. '}${format(amount)} ${reference.unit}`}</Text>
@@ -98,6 +104,9 @@ const styles = StyleSheet.create({
   divider: { borderBottomWidth: StyleSheet.hairlineWidth, borderBottomColor: colors.line },
   row: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
   nameWrap: { flex: 1 },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  sourcesButton: { height: 30, borderRadius: radii.pill, backgroundColor: colors.accentSoft, paddingHorizontal: 10, alignItems: 'center', justifyContent: 'center' },
+  sourcesText: { color: colors.primary, fontSize: 10, fontWeight: '800' },
   name: { color: colors.ink, fontSize: 14, fontWeight: '700' },
   nameFeatured: { fontSize: 16 },
   status: { color: colors.muted, fontSize: 10, lineHeight: 15, marginTop: 2 },

@@ -1,5 +1,5 @@
 import { supabase } from '../lib/supabase';
-import { dayBounds, sevenDayStart } from '../nutrition/engine';
+import { dayBounds, historyStart } from '../nutrition/engine';
 import { deletePreviewMeal, getPreviewMeal, getPreviewMeals, isPreviewMode, previewAnalyzeMeal, savePreviewMeal } from '../lib/preview';
 import type { Meal, MealItem, ParsedMeal } from '../types/domain';
 
@@ -32,9 +32,9 @@ export async function fetchMealsForToday(date = new Date()): Promise<Meal[]> {
   return fetchMeals(start, end);
 }
 
-export async function fetchMealsForSevenDays(now = new Date()): Promise<Meal[]> {
+export async function fetchMealsForThirtyDays(now = new Date()): Promise<Meal[]> {
   if (isPreviewMode) return getPreviewMeals();
-  return fetchMeals(sevenDayStart(now), new Date(now.getTime() + 60_000).toISOString());
+  return fetchMeals(historyStart(30, now), new Date(now.getTime() + 60_000).toISOString());
 }
 
 export async function fetchMeal(id: string): Promise<Meal> {

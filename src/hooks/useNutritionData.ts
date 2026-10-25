@@ -1,7 +1,7 @@
 import { useCallback, useState } from 'react';
 import { useFocusEffect } from 'expo-router';
 import { dayBounds } from '../nutrition/engine';
-import { fetchMealsForSevenDays } from '../services/meals';
+import { fetchMealsForThirtyDays } from '../services/meals';
 import type { Meal } from '../types/domain';
 
 export function useNutritionData() {
@@ -12,7 +12,7 @@ export function useNutritionData() {
   const refresh = useCallback(async () => {
     setLoading(true);
     try {
-      setMeals(await fetchMealsForSevenDays());
+      setMeals(await fetchMealsForThirtyDays());
       setError(null);
     } catch (cause) {
       setError(cause instanceof Error ? cause.message : 'Daten konnten nicht geladen werden.');
